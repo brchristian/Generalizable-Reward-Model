@@ -23,13 +23,13 @@ from grm_utils import AutoModelForCausalLMWithValueHead
 @dataclass
 class ScriptArguments:
     # training args
-    per_device_train_batch_size: Optional[int] = field(default=1) 
+    per_device_train_batch_size: Optional[int] = field(default=1)
     gradient_accumulation_steps: Optional[int] = field(default=16)
     learning_rate: Optional[float] = field(default=1e-5)
     num_train_epochs: Optional[int] = field(default=2, metadata={"help": "The number of training epochs for the reward model."})
     optim: Optional[str] = field(default="adamw_hf",  metadata={"help": "The optimizer to use."})
     lr_scheduler_type: Optional[str] = field(default="cosine", metadata={"help": "The lr scheduler"},)
-    max_length: Optional[int] = field(default=1024) 
+    max_length: Optional[int] = field(default=1024)
     gradient_checkpointing: Optional[bool] = field(default=True)
     bf16: Optional[bool] = field(default=True)
     attn_implementation: Optional[str] = field(default="flash_attention_2")
@@ -64,9 +64,9 @@ class ScriptArguments:
     reference_free: Optional[bool] = field(default=True)
     sft_only: Optional[bool] = field(default=True)
     no_logsigmoid_sft: Optional[bool] = field(default=False)
-    
 
-    
+
+
 
 
 parser = HfArgumentParser(ScriptArguments)
@@ -77,7 +77,7 @@ if script_args.use_lora:
 else:
     output_name = f"{script_args.log_dir}/{model_name_split}_{script_args.wandb_name}_len{script_args.max_length}_fulltrain_{script_args.learning_rate}_data{script_args.dataset.split('/')[-1]}"
 
-device = Accelerator().local_process_index 
+device = Accelerator().local_process_index
 
 training_args = TrainingArguments(
     output_dir=os.path.join(output_name, 'logs'),
@@ -90,7 +90,7 @@ training_args = TrainingArguments(
     save_strategy=script_args.save_strategy,
     save_steps=script_args.save_steps,
     gradient_accumulation_steps=script_args.gradient_accumulation_steps,
-    gradient_checkpointing=script_args.gradient_checkpointing, 
+    gradient_checkpointing=script_args.gradient_checkpointing,
     bf16=script_args.bf16,
     logging_strategy="steps",
     logging_steps=10,
@@ -136,7 +136,7 @@ if not script_args.reference_free:
 
 
 model = AutoModelForCausalLMWithValueHead.from_pretrained(
-    script_args.base_model, device_map=device, 
+    script_args.base_model, device_map=device,
     torch_dtype=torch.bfloat16,
     **model_params,
 )

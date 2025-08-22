@@ -34,7 +34,7 @@ def compute_metrics(eval_pred):
 def grm_compute_metrics(eval_pred):
     rewards = eval_pred.label_ids
     reward_accuracy = (rewards[:, 0] > rewards[:, 1]).mean()
-    
+
     predictions = eval_pred.predictions
     accuracy = (predictions[:, 0] > predictions[:, 1]).mean()
     return {

@@ -39,7 +39,7 @@ def compute_metrics(eval_pred):
 def grm_compute_metrics(eval_pred):
     rewards = eval_pred.label_ids
     reward_accuracy = (rewards[:, 0] > rewards[:, 1]).mean()
-    
+
     predictions = eval_pred.predictions
     accuracy = (predictions[:, 0] > predictions[:, 1]).mean()
     return {
@@ -81,7 +81,7 @@ def create_output_directory(log_dir: str, wandb_name: str):
 def save_results_in_parquet_splits(results, num_splits, save_path, mode='test'):
     results_df = pd.DataFrame(results)
     dataset_with_results = Dataset.from_pandas(results_df)
-    
+
     split_size = len(dataset_with_results) // num_splits
     for i in range(num_splits):
         start = i * split_size

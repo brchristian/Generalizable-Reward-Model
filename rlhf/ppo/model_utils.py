@@ -90,7 +90,7 @@ class ValueHead(nn.Module):
             for i in range(num_layers):
                 module_lis.extend([nn.Linear(input_neurons, num_neurons), nn.ReLU()])
                 input_neurons = num_neurons
-                
+
             module_lis.append(nn.Linear(num_neurons, 1))
             self.summary = nn.Sequential(*module_lis)
         self.flatten = nn.Flatten()
@@ -231,7 +231,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
             last_hidden_state = last_hidden_state.to(self.v_head.summary.weight.device)
         elif not hasattr(self.v_head.summary, 'weight') and (last_hidden_state.device != self.v_head.summary[0].weight.device):
             last_hidden_state = last_hidden_state.to(self.v_head.summary[0].weight.device)
-        
+
         # use the last token value as reward
         last_index = attention_mask.sum(dim=-1) - 1
         value = self.v_head(last_hidden_state).squeeze(-1)[torch.arange(len(last_hidden_state)), last_index]
@@ -261,7 +261,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
         Returns the state dictionary of the model. We add the state dictionary of the value head
         to the state dictionary of the wrapped model by prepending the key with `v_head.`.
         """
-        ### return lora 
+        ### return lora
         pretrained_model_state_dict = self.pretrained_model.state_dict(*args, **kwargs).copy()
 
         v_head_state_dict = self.v_head.state_dict(*args, **kwargs).copy()
@@ -276,7 +276,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
 
         return self.pretrained_model.push_to_hub(*args, **kwargs)
 
-    
+
 
     def post_init(self, state_dict):
         r"""
@@ -334,7 +334,7 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
 
     if 'Mistral' not in model_name:
         model_config['attn_implementation'] = "flash_attention_2"
-        
+
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, **model_config)
     model.config.pad_token_id = tokenizer.pad_token_id
 
@@ -359,7 +359,7 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
 
         missing, unexpected = model.base_model.model.pretrained_model.load_state_dict(loaded_state_dict, strict=False)
         missing, unexpected = model.base_model.model.load_state_dict(loaded_state_dict, strict=False)
-    
+
     if hasattr(model, 'merge_and_unload'):
         model = model.merge_and_unload()
     return model

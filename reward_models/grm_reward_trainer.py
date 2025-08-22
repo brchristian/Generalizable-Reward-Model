@@ -51,18 +51,18 @@ class GRMDataCollatorWithPadding:
             label_rejected_paded = torch.tensor(feature["label_rejected"].tolist() + [self.label_pad_token_id] * (paded_length - len(feature["label_rejected"])) , dtype=torch.int64)
             label_paded.extend([label_chosen_paded.view(1, -1), label_rejected_paded.view(1, -1)])
         label_paded = torch.concatenate(label_paded, dim=0)
-            
+
         batch = {
             "input_ids": batch["input_ids"],
             "attention_mask": batch["attention_mask"],
             "return_loss": True,
-            "label": label_paded,  
+            "label": label_paded,
         }
         return batch
 
 
 
-class GRMRewardTrainer(RewardTrainer):    
+class GRMRewardTrainer(RewardTrainer):
     def __init__(self, **kwargs):
         self.reference_free = kwargs.pop('reference_free', True)
         self.reference_model = kwargs.pop('reference_model', None)
@@ -77,7 +77,7 @@ class GRMRewardTrainer(RewardTrainer):
 
 
     def get_batch_logps(
-        self, 
+        self,
         logits: torch.FloatTensor,
         labels: torch.LongTensor,
         average_log_prob: bool = False,
@@ -104,10 +104,10 @@ class GRMRewardTrainer(RewardTrainer):
         if not self.reference_free:
             with torch.no_grad():
                 ref_logits = self.reference_model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])[0]
-        
+
         bsz = rewards.size(0)
         jidx = torch.arange(0, bsz, 2) # chosen_ids
-        kidx = jidx + 1                # rejected_ids  
+        kidx = jidx + 1                # rejected_ids
         reward_loss = -nn.functional.logsigmoid(rewards[jidx] - rewards[kidx]).mean()
 
         ## text-generation regularization
@@ -121,7 +121,7 @@ class GRMRewardTrainer(RewardTrainer):
                 else:
                     dpo_loss = -F.logsigmoid(self.beta * (pi_logratios)).mean()
             else:
-                pi_logratios = logps[jidx] - logps[kidx]  
+                pi_logratios = logps[jidx] - logps[kidx]
                 if self.reference_free or self.sft_only:
                     ref_logratios = torch.tensor(0.0)
                 else:

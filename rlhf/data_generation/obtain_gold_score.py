@@ -29,7 +29,7 @@ class ScriptArguments:
     mode: Optional[str] = field(default="train", metadata={"help": "'train', and 'test'"})
     num_splits: int = field(default=1, metadata={"help": "Number of splits for saving results"})
     debug: Optional[bool] = field(default=False)
-    
+
 
 def parse_args() -> ScriptArguments:
     parser = argparse.ArgumentParser(description="Set parameters for model training & evaluation.")
@@ -49,7 +49,7 @@ def obtain_gold_score(script_args):
 
     # Initialize Accelerator
     accelerator = Accelerator()
-    device = Accelerator().local_process_index 
+    device = Accelerator().local_process_index
     print('Curent Device', device)
     print('Number of processes:', accelerator.num_processes)
 
@@ -63,14 +63,14 @@ def obtain_gold_score(script_args):
     model = AutoModelForSequenceClassification.from_pretrained(script_args.model_path, num_labels=1, device_map=device, torch_dtype=torch.bfloat16)
     # model.resize_token_embeddings(len(tokenizer))
     # model.config.pad_token_id = tokenizer.pad_token_id
-    
+
     # Prepare dataset and DataLoader
     dataset = build_dataset_UF4gold_score(script_args.data_path, tokenizer, split=script_args.mode, max_length=script_args.max_length)
-    
+
     if script_args.debug:
         dataset = dataset.select(range(0,100))
     print('Size of %s Dataset: %s'%(script_args.mode, len(dataset)))
-        
+
     # Shard the dataset among processes
     sampler = DistributedSampler(dataset, num_replicas=accelerator.num_processes, rank=accelerator.local_process_index, shuffle=False)
     data_loader = prepare_data_loader(dataset, tokenizer, script_args.per_device_batch_size, sampler=sampler)
@@ -97,7 +97,7 @@ def obtain_gold_score(script_args):
                 full_unique_ids.extend(batch['unique_id'])
             if accelerator.is_main_process:
                 pbar.update(1)
-    
+
     full_chosen_prompts = [x.rstrip(tokenizer.pad_token) for x in tokenizer.batch_decode(full_chosen_prompts)]
     full_rejected_prompts = [x.rstrip(tokenizer.pad_token) for x in tokenizer.batch_decode(full_rejected_prompts)]
 
@@ -108,14 +108,14 @@ def obtain_gold_score(script_args):
 
     # print(f'Process {accelerator.local_process_index} processed {len(full_chosen_prompts)} prompts')
     accelerator.wait_for_everyone()
-  
+
     all_chosen_prompts = accelerator.gather_for_metrics(full_chosen_prompts)
     all_rejected_prompts = accelerator.gather_for_metrics(full_rejected_prompts)
     all_rewards_chosen = accelerator.gather_for_metrics(full_rewards_chosen)
     all_rewards_rejected = accelerator.gather_for_metrics(full_rewards_rejected)
     if 'unique_id' in batch.keys():
         all_unique_ids = accelerator.gather_for_metrics(full_unique_ids)
-    
+
     if accelerator.is_main_process:
         evaluation_result = {
             'prompts_A': all_chosen_prompts,
@@ -139,7 +139,7 @@ def obtain_gold_score(script_args):
             example['conv_A_rating'] = matching_row.iloc[0]['rewards_A']
             example['conv_B_rating'] = matching_row.iloc[0]['rewards_B']
             return example
-        
+
         # Apply the replacement function to the dataset
         tokenizer = AutoTokenizer.from_pretrained(script_args.model_path, use_fast=False)
         dataset_prepared = load_dataset_within_maxlength(script_args.data_path, tokenizer, split=script_args.mode, max_length=script_args.max_length)
@@ -151,7 +151,7 @@ def obtain_gold_score(script_args):
         dataset_gold_score = dataset_gold_score.remove_columns(['unique_id'])
         save_results_in_parquet_splits(dataset_gold_score, num_splits=script_args.num_splits, save_path=output_dir, mode=script_args.mode)
 
-        
+
 
 if __name__ == "__main__":
     script_args = parse_args()

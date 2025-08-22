@@ -13,7 +13,7 @@ class ScriptArguments:
     proxy_score_path: str = field(default='./step4_choose_best_of_n/gemma-2b-it/grm/proxy_score.csv', metadata={'help': 'Path to the proxy score CSV'})
     gold_score_path: str = field(default='./step5_obtain_bon_gold_score/gemma-2b-it/grm/gold_score.csv', metadata={'help': 'Path to the gold score CSV'})
     output_path: str = field(default='./step6_collect/gemma-2b-it/grm', metadata={'help': 'Path to save the output CSV'})
-    
+
     n_values_start: Optional[int] = field(default=1, metadata={"help": "Starting value of N range to consider."})
     n_values_end: Optional[int] = field(default=406, metadata={"help": "Ending value of N range to consider."})
     kl_min: Optional[float] = field(default=0.0, metadata={"help": "Minimum KL value for filtering."})
@@ -24,7 +24,7 @@ def parse_args() -> ScriptArguments:
     parser = argparse.ArgumentParser(description="Process KL values and calculate average gold scores.")
     for field_name, field_def in ScriptArguments.__dataclass_fields__.items():
         parser.add_argument(f"--{field_name}", type=type(field_def.default), default=field_def.default, help=field_def.metadata['help'])
-    
+
     args = parser.parse_args()
     return ScriptArguments(**vars(args))
 
@@ -39,17 +39,17 @@ def process_gold_scores(filtered_results, df_gold_score, df_proxy_score):
         print('Processing for N =', n)
         # Filter df_bon by specific N
         df_n = df_proxy_score[df_proxy_score['N'] == n]
-        
+
         # Match and collect gold scores
         matched_gold_scores = []
         for _, bon_row in df_n.iterrows():
             id_value, order_value = bon_row['id'], bon_row['order']
-            gold_score = df_gold_score[(df_gold_score['id_ids'] == id_value) & 
+            gold_score = df_gold_score[(df_gold_score['id_ids'] == id_value) &
                                        (df_gold_score['order_ids'] == order_value)]['gold_rewards'].values
             matched_gold_scores.append(gold_score[0])
 
         # Calculate and store average score
-        avg_gold_score = np.mean(matched_gold_scores) 
+        avg_gold_score = np.mean(matched_gold_scores)
         best_of_n_score_list.append(avg_gold_score)
 
     filtered_results['avg_gold_score'] = best_of_n_score_list
@@ -64,11 +64,11 @@ def processing_proxy_scores(filtered_results, df_proxy_score):
         print('Processing for N =', n)
         # Filter df_bon by specific N
         df_n = df_proxy_score[df_proxy_score['N'] == n]
-   
+
         proxy_scores_list = []
         # Iterate over each row in df_n
         for _, row in df_n.iterrows():
-            proxy_score = row['rewards'] 
+            proxy_score = row['rewards']
             # Collect all matching gold_score records
             proxy_scores_list.append(proxy_score)
 
@@ -78,7 +78,7 @@ def processing_proxy_scores(filtered_results, df_proxy_score):
     filtered_results['avg_proxy_score'] = best_of_n_score_list
 
     return filtered_results
- 
+
 
 def collect():
     # Parse arguments

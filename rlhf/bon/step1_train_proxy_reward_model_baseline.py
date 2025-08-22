@@ -26,19 +26,19 @@ from reward_trainer import SimpleRewardTrainer, RewardDataCollatorWithPadding
 @dataclass
 class ScriptArguments:
     # training args
-    per_device_train_batch_size: Optional[int] = field(default=1) 
+    per_device_train_batch_size: Optional[int] = field(default=1)
     gradient_accumulation_steps: Optional[int] = field(default=16)
     learning_rate: Optional[float] = field(default=1e-5)
     num_train_epochs: Optional[int] = field(default=2, metadata={"help": "The number of training epochs for the reward model."})
     optim: Optional[str] = field(default="adamw_hf",  metadata={"help": "The optimizer to use."})
     lr_scheduler_type: Optional[str] = field(default="cosine", metadata={"help": "The lr scheduler"},)
-    max_length: Optional[int] = field(default=1024) 
+    max_length: Optional[int] = field(default=1024)
     gradient_checkpointing: Optional[bool] = field(default=True)
     bf16: Optional[bool] = field(default=True)
     attn_implementation: Optional[str] = field(default="flash_attention_2")
     # data
     dataset: Optional[str] = field(default='rlhf/bon/step1_obtain_gold_score/unified_sampled_gold_score')
- 
+
     # lora
     use_lora: Optional[bool] = field(default=True)
     lora_target_modules: Optional[List[str]] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"])
@@ -61,7 +61,7 @@ class ScriptArguments:
     save_strategy: Optional[str] = field(default="epoch")
     save_steps: Optional[int] = field(default=1000)
     debug: Optional[bool] = field(default=False, metadata={'help': 'if debug=True, only train with 100 samples'})
-    
+
 
 
 parser = HfArgumentParser(ScriptArguments)
@@ -72,7 +72,7 @@ if script_args.use_lora:
 else:
     output_name = f"{script_args.log_dir}/{model_name_split}_{script_args.wandb_name}_len{script_args.max_length}_fulltrain_{script_args.learning_rate}_data{script_args.dataset.split('/')[-1]}"
 
-device = Accelerator().local_process_index 
+device = Accelerator().local_process_index
 
 training_args = TrainingArguments(
     output_dir=os.path.join(output_name, 'logs'),
@@ -85,7 +85,7 @@ training_args = TrainingArguments(
     save_strategy=script_args.save_strategy,
     save_steps=script_args.save_steps,
     gradient_accumulation_steps=script_args.gradient_accumulation_steps,
-    gradient_checkpointing=script_args.gradient_checkpointing, 
+    gradient_checkpointing=script_args.gradient_checkpointing,
     bf16=script_args.bf16,
     logging_strategy="steps",
     logging_steps=10,
@@ -122,7 +122,7 @@ else:
     model_params = {}
 
 model = AutoModelForSequenceClassification.from_pretrained(
-    script_args.base_model, num_labels=1, device_map=device, 
+    script_args.base_model, num_labels=1, device_map=device,
     torch_dtype=torch.bfloat16,
     **model_params
 )
@@ -130,9 +130,9 @@ model = AutoModelForSequenceClassification.from_pretrained(
 if script_args.freeze_pretrained:
     # for frozon baseline
     mlp_layer = nn.Sequential(
-        nn.Linear(model.config.hidden_size, 1024, dtype=torch.bfloat16),  
+        nn.Linear(model.config.hidden_size, 1024, dtype=torch.bfloat16),
         nn.ReLU(),
-        nn.Linear(1024, 1, dtype=torch.bfloat16)  
+        nn.Linear(1024, 1, dtype=torch.bfloat16)
     )
     mlp_layer.to(device)
     # Replace the classifier with the MLP

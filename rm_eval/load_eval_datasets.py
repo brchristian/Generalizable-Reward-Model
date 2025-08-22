@@ -39,11 +39,11 @@ def build_unified_eval_dataset(data_path, tokenizer, split='val', size=None):
         else:
             chosen_messages = example['conv_B']
             rejected_messages = example['conv_A']
-        
+
         if 'summarize' in example['source']:
             chosen_messages[0]['content'] = 'Generate one-sentence summary for the following post: ' + chosen_messages[0]['content'].strip()
             rejected_messages[0]['content'] = 'Generate one-sentence summary for the following post: ' + rejected_messages[0]['content'].strip()
-        
+
         prompt_plus_chosen_response = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
         prompt_plus_rejected_response = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
         tokens_chosen = tokenizer.encode_plus(prompt_plus_chosen_response, **kwargs)
@@ -73,7 +73,7 @@ def build_ood_eval_dataset(data_path, tokenizer, split='test', size=None):
             new_ds = new_ds.add_column('source_id', [i] * len(new_ds))
             if ds_tmp is None:
                 ds_tmp = new_ds
-                
+
             else:
                 ds_tmp = concatenate_datasets([ds_tmp, new_ds])
         ds = ds_tmp
@@ -81,7 +81,7 @@ def build_ood_eval_dataset(data_path, tokenizer, split='test', size=None):
         ds_raw = load_dataset('lmsys/mt_bench_human_judgments')
         ds = concatenate_datasets([
             ds_raw['human'].add_column('source_id', [0] * len(ds_raw['human'])),
-            ds_raw['gpt4_pair'].add_column('source_id', [1] * len(ds_raw['gpt4_pair'])), 
+            ds_raw['gpt4_pair'].add_column('source_id', [1] * len(ds_raw['gpt4_pair'])),
             ])
     else:
         ds = load_dataset(data_path, split=split)
@@ -109,7 +109,7 @@ def build_ood_eval_dataset(data_path, tokenizer, split='test', size=None):
                             {'role': 'user', 'content': human_msg},
                             {'role': 'assistant', 'content': assistant_msg},
                         ])
-                    else: # last 
+                    else: # last
                         human_msg = lis.strip()
                         chosen_messages.extend([
                             {'role': 'user', 'content': human_msg},
@@ -177,9 +177,9 @@ def load_eval_dataset(task, tokenizer, size=None):
         if 'hhh' in task:
             data_path = 'HuggingFaceH4/hhh_alignment'
         elif 'mt' in task:
-            data_path = 'lmsys/mt_bench_human_judgments' 
+            data_path = 'lmsys/mt_bench_human_judgments'
         else:
             raise NotImplementedError
-        
+
         eval_dataset = build_ood_eval_dataset(data_path, tokenizer, split='test', size=size)
     return eval_dataset

@@ -11,12 +11,12 @@ log_dir='./eval_GRM'
 save_all_data=False
 
 cd ../rm_eval
-for task in 'unified'  'hhh'  'mtbench' 
-do 
+for task in 'unified'  'hhh'  'mtbench'
+do
     CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port ${port} eval_grm.py --base_model ${base_model} --peft_name ${peft_name} \
                                              --per_device_eval_batch_size ${per_device_eval_batch_size} \
                                              --max_length ${max_length} --log_dir ${log_dir} --save_all_data ${save_all_data} \
-                                              --task ${task} --layer_type ${layer_type} --num_layers ${num_layers} 
+                                              --task ${task} --layer_type ${layer_type} --num_layers ${num_layers}
 
 done
 

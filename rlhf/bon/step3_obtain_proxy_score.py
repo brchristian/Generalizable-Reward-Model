@@ -74,7 +74,7 @@ def obtain_proxy_score():
     if script_args.debug:
         dataset = dataset.select(range(0,40))
     print('Size of Dataset: %s'%(len(dataset)))
-        
+
     sampler = DistributedSampler(dataset, num_replicas=accelerator.num_processes, rank=accelerator.local_process_index, shuffle=False)
     data_loader = prepare_data_loader(dataset, tokenizer, script_args.per_device_batch_size, sampler=sampler, collate_fn_type='custom')
     # data_loader = accelerator.prepare(data_loader)
@@ -96,11 +96,11 @@ def obtain_proxy_score():
     full_prompts, full_rewards, full_source_ids, full_id_ids = [], [], [], []
     pbar = tqdm(total=len(data_loader) * script_args.per_device_batch_size // accelerator.num_processes)
     device = accelerator.local_process_index
-    
+
     with torch.no_grad():
         for batch in data_loader:
             if script_args.model_type == 'grm':
-                reward_tensors = model_withhead_forward(model, batch["input_ids"], batch["attention_mask"], device, forward_type='reward') 
+                reward_tensors = model_withhead_forward(model, batch["input_ids"], batch["attention_mask"], device, forward_type='reward')
             else:
                 reward_tensors = model(batch["input_ids"].to(device), attention_mask=batch["attention_mask"].to(device)).logits.reshape(-1)
 
@@ -109,13 +109,13 @@ def obtain_proxy_score():
             full_source_ids.extend(batch['source'])
             full_id_ids.extend(batch['id'])
             pbar.update(1)
-    
+
 
     full_prompts = [x.rstrip(tokenizer.pad_token) for x in tokenizer.batch_decode(full_prompts)]
     full_rewards = [float(x) for x in full_rewards]
     # full_source_ids = full_source_ids
     # full_id_ids = full_id_ids
-    
+
     accelerator.wait_for_everyone()
     # Gather results from all processes
     all_prompts = accelerator.gather_for_metrics(full_prompts)

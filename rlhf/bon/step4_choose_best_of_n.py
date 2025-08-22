@@ -54,19 +54,19 @@ def processing(method, filtered_results, data_df, output_dir):
         grouped_max_scores = data_df.groupby('id_ids').apply(get_highest_within_n, n)
         grouped_max_scores['N'] = n
         all_grouped_scores.append(grouped_max_scores)
-       
+
     # Concatenate all DataFrames
     final_df = pd.concat(all_grouped_scores).reset_index(drop=True)
     # Apply processing to 'prompts' field
     new_columns = final_df['prompts'].apply(process_row)
     final_df = pd.concat([final_df, new_columns], axis=1)
     final_df.rename(columns={'id_ids': 'id', 'source_ids': 'source'}, inplace=True)
-    
+
     # Save results to CSV
     save_path = os.path.join(output_dir, f'bon_selected_proxy_{method}.csv')
     final_df.to_csv(save_path, index=False)
     print(f"Saved results to {save_path}")
-    
+
     # Save deduplicated results
     dedup_df = final_df.drop_duplicates(subset=['id', 'order'])
     dedup_save_path = os.path.join(output_dir, f'bon_selected_proxy_{method}_drop_duplicates')

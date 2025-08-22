@@ -50,7 +50,7 @@ def generate_samples():
 
     # Initialize Accelerator
     accelerator = Accelerator()
-    device = Accelerator().local_process_index 
+    device = Accelerator().local_process_index
 
     # Create output directory
     output_dir = create_output_directory(script_args.save_path, script_args.save_name)
@@ -66,7 +66,7 @@ def generate_samples():
     # Load and process dataset
     dataset = load_data2generate(script_args.data_path, tokenizer, script_args.N, script_args.debug)
     print('Size of Total Dataset: %s'%(len(dataset)))
-   
+
     # Prepare dataset with accelerator
     total_size = len(dataset)
     chunk_size = ceil(total_size / accelerator.num_processes)
@@ -90,12 +90,12 @@ def generate_samples():
                 **prompts,
                 max_new_tokens=script_args.max_new_tokens,
                 pad_token_id=tokenizer.eos_token_id,
-                do_sample=True, 
+                do_sample=True,
                 top_k=0.0,
                 temperature=0.7,
                 top_p=0.95
             )
-        
+
         # Remove prompt from generated tokens
         outputs = [tok_out[len(tok_in):] for tok_in, tok_out in zip(prompts["input_ids"], outputs)]
         decoded_outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True)

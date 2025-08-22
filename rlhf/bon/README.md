@@ -24,7 +24,7 @@ The trained proxy model is applied to each of the generated responses, assigning
 
 ### Step 4: Select Best-of-N Responses
 
-Using the proxy scores from Step 3, we select the single best response out of the $N$ generated responses for each prompt. The highest-scoring response is chosen as the “best-of-N” according to the proxy model. 
+Using the proxy scores from Step 3, we select the single best response out of the $N$ generated responses for each prompt. The highest-scoring response is chosen as the “best-of-N” according to the proxy model.
 
 **Note**: To apply ensemble methods: (1) train multiple models in Step 1 using different random seeds; (2) perform inference with each model in Step 3; and (3) aggregate the proxy scores using methods like `min` or `avg` before proceeding to Step 4.
 

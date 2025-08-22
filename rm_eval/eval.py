@@ -22,7 +22,7 @@ from load_eval_datasets import load_eval_dataset
 @dataclass
 class ScriptArguments:
     per_device_eval_batch_size: Optional[int] = field(default=8)
-    max_length: Optional[int] = field(default=1024) 
+    max_length: Optional[int] = field(default=1024)
     base_model: Optional[str] =  field(default="google/gemma-2b-it")
     peft_name: Optional[str] =  field(default="gemma-2b-it_reward_unified_0.5datasset_bs1_lora32_len1024_1epoch_1e-05/checkpoint")
     log_dir: Optional[str] = field(default='./eval_unified_reward_models')
@@ -34,7 +34,7 @@ parser = HfArgumentParser(ScriptArguments)
 script_args = parser.parse_args_into_dataclasses()[0]
 
 accelerator = Accelerator()
-device = Accelerator().local_process_index 
+device = Accelerator().local_process_index
 
 model_name = script_args.base_model
 log_path = os.path.join(script_args.log_dir, model_name.split('/')[-1], script_args.task)
@@ -57,7 +57,7 @@ print('size of test dataset: ', len(eval_dataset))
 ###### load model
 model = AutoModelForSequenceClassification.from_pretrained(
     model_name,
-    num_labels=1, device_map=device, 
+    num_labels=1, device_map=device,
     torch_dtype=torch.float16,
 )
 
@@ -66,7 +66,7 @@ if 'freeze' in script_args.peft_name or script_args.freeze_pretrained:
     print('loading freeze nonlinear parameters')
     tensors = {}
     path_list = glob.glob(os.path.join(script_args.peft_name, "model-*.safetensors"))
-    
+
     for path in path_list:
         with safe_open(path, framework="pt", device=0) as f:
             for k in f.keys():
@@ -75,15 +75,15 @@ if 'freeze' in script_args.peft_name or script_args.freeze_pretrained:
 
     # use the same structure as the training
     mlp_layer = nn.Sequential(
-        nn.Linear(model.config.hidden_size, 1024, dtype=torch.float16),  
+        nn.Linear(model.config.hidden_size, 1024, dtype=torch.float16),
         nn.ReLU(),
-        nn.Linear(1024, 1, dtype=torch.float16)  
+        nn.Linear(1024, 1, dtype=torch.float16)
     )
     mlp_layer.to(device)
     # Replace the classifier with the MLP
     model.score = mlp_layer
     model.load_state_dict(tensors, strict=False)
-    
+
 
 model.resize_token_embeddings(len(tokenizer))
 model.config.pad_token_id = tokenizer.pad_token_id
@@ -148,6 +148,6 @@ if accelerator.is_main_process:
     dataframe.to_csv(os.path.join(log_path,'eval_data.csv'))
     with open(os.path.join(log_path,'accuracy.txt'), 'w+') as f:
         f.write(str(accuracy))
-    
+
 
 

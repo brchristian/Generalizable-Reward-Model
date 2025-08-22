@@ -7,7 +7,7 @@ log_dir='../save_reward_models'
 main_process_port=9994
 
 learning_rate=5e-6
-max_length=3000 
+max_length=3000
 num_train_epochs=1
 gradient_accumulation_steps=64
 

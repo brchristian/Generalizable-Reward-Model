@@ -57,7 +57,7 @@ class ValueHead(nn.Module):
             for i in range(num_layers):
                 module_lis.extend([nn.Linear(input_neurons, num_neurons), nn.ReLU()])
                 input_neurons = num_neurons
-                
+
             module_lis.append(nn.Linear(num_neurons, num_output))
             self.summary = nn.Sequential(*module_lis)
         self.flatten = nn.Flatten()
@@ -137,7 +137,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
             last_hidden_state = last_hidden_state.to(self.v_head.summary.weight.device)
         elif not hasattr(self.v_head.summary, 'weight') and (last_hidden_state.device != self.v_head.summary[0].weight.device):
             last_hidden_state = last_hidden_state.to(self.v_head.summary[0].weight.device)
-        
+
         # use the last token value as reward
         last_index = attention_mask.sum(dim=-1) - 1
         value = self.v_head(last_hidden_state).squeeze(-1)[torch.arange(len(last_hidden_state)), last_index]
@@ -164,7 +164,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
         setattr(self.pretrained_model, "v_head", self.v_head)
         return self.pretrained_model.push_to_hub(*args, **kwargs)
 
-    
+
 
     def post_init(self, state_dict):
         r"""
@@ -203,7 +203,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
             self.register_forward_hook(set_device_hook)
 
             self.is_sequential_parallel = True
-    
+
     @classmethod
     def register_for_auto_class(cls, auto_class="AutoModel"):
         if not isinstance(auto_class, str):
@@ -279,7 +279,7 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
 
     if 'Mistral' not in model_name:
         model_config['attn_implementation'] = "flash_attention_2"
-    
+
     if not len(peft_name):
         model_config.pop('attn_implementation')
         model = GRewardModel.from_pretrained(model_name, **model_config)
@@ -287,7 +287,7 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
     else:
         model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, **model_config)
         model.pretrained_model.resize_token_embeddings(len(tokenizer))
-    
+
     model.config.pad_token_id = tokenizer.pad_token_id
     if len(peft_name) and os.path.exists(peft_name):
         peft_config = PeftConfig.from_pretrained(peft_name)
@@ -306,7 +306,7 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
             loaded_state_dict = torch.load(os.path.join(peft_name, "pytorch_model.bin"))
         missing, unexpected = model.base_model.model.pretrained_model.load_state_dict(loaded_state_dict, strict=False)
         missing, unexpected = model.base_model.model.load_state_dict(loaded_state_dict, strict=False)
-    
+
     if hasattr(model, 'merge_and_unload'):
         model = model.merge_and_unload()
     return model
@@ -319,7 +319,7 @@ def model_withhead_forward(model, input_ids, attention_mask, device, forward_typ
     elif forward_type == 'dpo':
         res = model(input_ids.to(device), attention_mask=attention_mask.to(device))
         if len(res) == 3:
-            logits, _, _ = res 
+            logits, _, _ = res
         else:
             logits = res.logits
         if logits.shape[:-1] != labels.shape:

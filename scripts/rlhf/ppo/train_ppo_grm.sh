@@ -12,7 +12,7 @@ gpu=4,5,6,7
 num_processes=1
 reward_base_model="google/gemma-2b-it"
 ### you need set this path
-reward_peft_path='save_reward_models/gemma-2b-it_GRM_seed1_len1024_lora32_1e-05_dataUnified-Feedback/logs/checkpoint-3536' 
+reward_peft_path='save_reward_models/gemma-2b-it_GRM_seed1_len1024_lora32_1e-05_dataUnified-Feedback/logs/checkpoint-3536'
 wandb_name="ppo_grm2B_lr1e-5_klreg0.0_normrewards"
 CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 10007 --num_processes ${num_processes} rlhf/ppo/ppo_grm.py \
     --base_model_name ${base_model_name} \
@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 10007 --num_pr
     --learning_rate 1e-5 \
     --layer_type 'mlp' --num_layers 1 \
     --debug False
-    
+
 
 
 # # training 7B reward model requires 6 gpus and 4 process (other 2 gpus for reward inference)
@@ -49,4 +49,4 @@ CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 10007 --num_pr
 #     --normalize_rewards True \
 #     --learning_rate 1e-5 \
 #     --layer_type 'mlp' --num_layers 1 \
-   
+

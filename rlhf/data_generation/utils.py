@@ -20,7 +20,7 @@ def create_output_directory(log_dir: str, wandb_name: str):
 def save_results_in_parquet_splits(results, num_splits, save_path, mode='test'):
     results_df = pd.DataFrame(results)
     dataset_with_results = Dataset.from_pandas(results_df)
-    
+
     split_size = len(dataset_with_results) // num_splits
     for i in range(num_splits):
         start = i * split_size

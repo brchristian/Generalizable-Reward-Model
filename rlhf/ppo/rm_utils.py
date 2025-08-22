@@ -9,7 +9,7 @@ import datasets
 from transformers import HfArgumentParser, AutoModelForSequenceClassification, AutoTokenizer
 from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer, set_seed
 import numpy as np
-import pandas as pd          
+import pandas as pd
 tqdm.pandas()
 from peft import LoraConfig, PeftModel
 import matplotlib.pyplot as plt
@@ -77,12 +77,12 @@ class RMEnsemble():
             self.gpu_ids.append(rm_gpu_id)
             self.rm_tokenizers.append(rm_tokenizer)
 
-        
+
     def forward(self, encoded_prompt_response):
         results = []
         with torch.no_grad():
             for i in range(len(self.peft_path_list)):
-                reward_tensors = [self.reward_models[i](x['input_ids'].to(self.gpu_ids[i])).logits[0] for x in encoded_prompt_response] 
+                reward_tensors = [self.reward_models[i](x['input_ids'].to(self.gpu_ids[i])).logits[0] for x in encoded_prompt_response]
                 results.append(torch.concat(reward_tensors).view(-1, 1))
 
         if self.ensemble_method == 'avg':
@@ -92,4 +92,3 @@ class RMEnsemble():
         else:
             raise NotImplementedError
         return reward_tensors
-    

@@ -47,7 +47,7 @@ def evaluate_and_collect_results(model, data_loader, tokenizer, accelerator, bat
     """Evaluate and return results."""
     full_prompts, full_rewards, full_source_ids, full_id_ids, full_order_ids = [], [], [], [], []
     pbar = tqdm(total=len(data_loader) * batch_size // accelerator.num_processes)
-    
+
     with torch.no_grad():
         for i, batch in enumerate(data_loader):
             reward_tensors = model(batch["input_ids"].to(model.device), attention_mask=batch["attention_mask"].to(model.device)).logits.reshape(-1)
@@ -109,7 +109,7 @@ def obtain_bon_gold_score():
 
     # Run evaluation and gather results
     evaluation_result = evaluate_and_collect_results(model, data_loader, tokenizer, accelerator, script_args.per_device_batch_size)
-    
+
     # Save results to CSV
     if accelerator.is_main_process:
         df = pd.DataFrame(evaluation_result)

@@ -1,6 +1,6 @@
 devices=0,1,2,3
 n_gpu=4
-export NCCL_P2P_DISABLE=1 
+export NCCL_P2P_DISABLE=1
 # dataset_name='hendrydong/preference_700K'
 dataset_name='Skywork/Skywork-Reward-Preference-80K-v0.2'
 base_model='google/gemma-2b-it'

@@ -19,10 +19,10 @@ from grm_utils import load_model_withhead, model_withhead_forward
 @dataclass
 class ScriptArguments:
     per_device_eval_batch_size: Optional[int] = field(default=8)
-    max_length: Optional[int] = field(default=1024) 
+    max_length: Optional[int] = field(default=1024)
     base_model: Optional[str] = field(default="Ray2333/GRM-llama3-8B-sftreg")
     peft_name: Optional[str] = field(default='')
-    layer_type: Optional[str] = field(default='mlp') 
+    layer_type: Optional[str] = field(default='mlp')
     num_layers: Optional[int] = field(default=1)
     log_dir: Optional[str] = field(default='./eval_reward_grm')
     task: Optional[Literal['unified', 'hhh', 'mtbench']] = field(default='unified')
@@ -33,7 +33,7 @@ parser = HfArgumentParser(ScriptArguments)
 script_args = parser.parse_args_into_dataclasses()[0]
 
 accelerator = Accelerator()
-device = Accelerator().local_process_index 
+device = Accelerator().local_process_index
 
 model_name = script_args.base_model
 log_path = os.path.join(script_args.log_dir, model_name.split('/')[-1], script_args.task)
@@ -71,8 +71,8 @@ full_source_ids = []
 pbar = tqdm(total=len(eval_dataset) // script_args.per_device_eval_batch_size // accelerator.num_processes)
 with torch.no_grad():
     for i, batch in enumerate(eval_data_loader):
-        reward_chosen_tensors = model_withhead_forward(model, batch["input_ids"], batch["attention_mask_chosen"], device, forward_type='reward') 
-        reward_rejected_tensors = model_withhead_forward(model, batch["input_ids_rejected"], batch["attention_mask_rejected"], device, forward_type='reward') 
+        reward_chosen_tensors = model_withhead_forward(model, batch["input_ids"], batch["attention_mask_chosen"], device, forward_type='reward')
+        reward_rejected_tensors = model_withhead_forward(model, batch["input_ids_rejected"], batch["attention_mask_rejected"], device, forward_type='reward')
         full_rewards_chosen.extend(reward_chosen_tensors)
         full_rewards_rejected.extend(reward_rejected_tensors)
         full_chosen_prompts.extend(batch['input_ids'])
@@ -105,7 +105,7 @@ if accelerator.is_main_process:
         'rejected_prompts': all_rejected_prompts,
         'chosen_rewards': all_rewards_chosen,
         'rejected_rewards': all_rewards_rejected,
-        
+
     }
     if 'source_id' in batch.keys():
         evaluation_result['source_ids'] = all_source_ids
@@ -118,6 +118,6 @@ if accelerator.is_main_process:
     dataframe.to_csv(os.path.join(log_path, 'eval_data.csv'))
     with open(os.path.join(log_path,'accuracy.txt'), 'w+') as f:
         f.write(str(accuracy))
-    
+
 
 

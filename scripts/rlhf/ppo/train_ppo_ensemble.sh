@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 9991 rlhf/ppo/
     --eval_every ${eval_every} \
     --ensemble_method ${ensemble_method} \
     --normalize_rewards True \
-    --learning_rate 1e-5 
+    --learning_rate 1e-5
 
 
 
@@ -49,7 +49,7 @@ CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 9998 rlhf/ppo/
 
 
 
-   
+
 
 
 

@@ -21,7 +21,7 @@ class ScriptArguments:
     save_name: Optional[str] = field(default='unified_sampled', metadata={"help": "Dataset Name."})
     num_splits: int = field(default=1, metadata={"help": "Number of splits for saving results"})
     debug: Optional[bool] = field(default=False)
-    
+
 
 def parse_args() -> ScriptArguments:
     parser = argparse.ArgumentParser(description="Set parameters for model training & evaluation.")
@@ -35,7 +35,7 @@ def parse_args() -> ScriptArguments:
     args = parser.parse_args()
     return ScriptArguments(**vars(args))
 
-        
+
 
 script_args = parse_args()
 # Load the dataset

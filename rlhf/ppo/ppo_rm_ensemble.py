@@ -7,7 +7,7 @@ from tqdm import tqdm
 from transformers import HfArgumentParser, AutoTokenizer
 from trl import AutoModelForCausalLMWithValueHead, PPOConfig, PPOTrainer, set_seed
 import numpy as np
-import pandas as pd          
+import pandas as pd
 tqdm.pandas()
 from ppo_utils import print_trainable_parameters, collator, eval_model, build_dataset_unified, transfer_template_rm, plot_curve
 from rm_utils import load_reward_model, RMEnsemble
@@ -43,15 +43,15 @@ class ScriptArguments:
 
 parser = HfArgumentParser(ScriptArguments)
 script_args = parser.parse_args_into_dataclasses()[0]
-# Remember to use a merged sft model if using lora 
+# Remember to use a merged sft model if using lora
 base_model_name = script_args.base_model_name
 print('base model: ', base_model_name)
 
 if script_args.disable_wandb: # if you don't need the wandb log
-    os.environ['WANDB_DISABLED'] = 'true' 
+    os.environ['WANDB_DISABLED'] = 'true'
 
 accelerator = Accelerator()
-gpu_id= Accelerator().local_process_index 
+gpu_id= Accelerator().local_process_index
 set_seed(8888)
 print('process: {}'.format(gpu_id))
 if accelerator.is_main_process and not os.path.exists(os.path.join(script_args.log_dir, script_args.wandb_name)):
@@ -87,7 +87,7 @@ if script_args.debug:
     eval_dataset = eval_dataset.select(range(40))
 print(f"Size of the train set: {len(train_dataset)}, eval set: {len(eval_dataset)}")
 
-# load fixed configs 
+# load fixed configs
 lora_config, generation_kwargs, eval_generation_kwargs = get_config(tokenizer)
 model_params = {
     "torch_dtype": torch.bfloat16,
@@ -135,12 +135,12 @@ for epoch in range(epochs):
         query_tensors = batch["input_ids"]
 
         with torch.no_grad():
-            response_tensors = ppo_trainer.generate(query_tensors, return_prompt=False, **generation_kwargs) 
+            response_tensors = ppo_trainer.generate(query_tensors, return_prompt=False, **generation_kwargs)
 
         full_responses = tokenizer.batch_decode(response_tensors)
         lengths = [len(x) for x in full_responses]
         batch['response'] = full_responses
- 
+
         # Compute score
         kwargs = {"padding": 'max_length', "truncation": True, "max_length": script_args.max_length, "return_tensors": "pt"}
         if tokenizer.chat_template == reward_models.rm_tokenizers[0].chat_template:
@@ -149,11 +149,11 @@ for epoch in range(epochs):
             # changing template for different reward model and base model
             temp_lis = [(transfer_template_rm(query, response, tokenizer, reward_models.rm_tokenizers[0])) for query, response in zip(batch['query'], batch['response'])]
             encoded_prompt_response = [reward_models.rm_tokenizers[0].encode_plus(query + response, **kwargs) for query, response in temp_lis]
-        
+
         with torch.no_grad():
             reward_tensors = reward_models.forward(encoded_prompt_response)
         rewards = [r.item() for r in reward_tensors]
-        
+
         # normalize using the first batch statistics
         if script_args.normalize_rewards:
             if epoch == 0 and i == 0:
@@ -210,4 +210,3 @@ if i % script_args.eval_every != 0: # not evaluated
         save_path = os.path.join(script_args.log_dir, script_args.wandb_name, name)
         ppo_trainer.save_pretrained(save_path)
         print("iter {}, batch {}: model saved".format(epoch, i))
-            

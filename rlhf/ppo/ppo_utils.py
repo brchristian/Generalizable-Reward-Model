@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import datasets
 import numpy as np
-import pandas as pd          
+import pandas as pd
 tqdm.pandas()
 import matplotlib.pyplot as plt
 
@@ -39,7 +39,7 @@ def eval_model(ppo_trainer, eval_dataset, tokenizer, accelerator, script_args, n
     full_response_tensors = []
     kl1_list, kl2_list, kl3_list = [], [], []
     full_source_ids, full_id_ids = [], []
-    
+
     eval_data_loader = DataLoader(eval_dataset, batch_size=script_args.eval_batch_size, drop_last=False, collate_fn=collator)
     eval_data_loader = accelerator.prepare(eval_data_loader)
 
@@ -47,7 +47,7 @@ def eval_model(ppo_trainer, eval_dataset, tokenizer, accelerator, script_args, n
     with torch.no_grad():
         for i, batch in enumerate(eval_data_loader):
             query_tensors = batch['input_ids']
-            response_tensors = ppo_trainer.generate(query_tensors, return_prompt=False, **eval_generation_kwargs) 
+            response_tensors = ppo_trainer.generate(query_tensors, return_prompt=False, **eval_generation_kwargs)
             full_response_tensors.extend(response_tensors)
             full_prompts.extend(batch['input_ids'])
 
@@ -135,7 +135,7 @@ def transfer_template_rm(prompt, response, tokenizer, rm_tokenizer):
                     {'content': reply, 'role': 'assistant'}]
                 )
             else:
-                query = res[0] 
+                query = res[0]
                 query = query.replace("<end_of_turn>\n", '')
                 messages.append(
                     {'content': query, 'role': 'user'},

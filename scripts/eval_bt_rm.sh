@@ -11,8 +11,8 @@ save_all_data=False
 freeze_pretrained=False # for freeze pretrained feature baseline
 
 cd ../rm_eval
-for task in  'unified' 'hhh'  'mtbench' 
-do 
+for task in  'unified' 'hhh'  'mtbench'
+do
     CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port ${port} eval.py \
                                         --base_model ${base_model} --peft_name ${peft_name} \
                                         --per_device_eval_batch_size ${per_device_eval_batch_size} \

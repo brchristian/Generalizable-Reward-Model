@@ -9,11 +9,11 @@ eval_dataset_path="rlhf/data/unified_1k" # set the eval dataset
 cd ../../../
 
 # 4 gpus for 2b rm
-gpu=0,1,2,3 
+gpu=0,1,2,3
 num_processes=4
 reward_base_model="google/gemma-2b-it"
 ### you need set this path
-reward_peft_path='rlhf/save_reward_models/gemma-2b-it_BT_RM_seed2_len1024_lora32_1e-05_dataUnified-Feedback/logs/checkpoint-3536' 
+reward_peft_path='rlhf/save_reward_models/gemma-2b-it_BT_RM_seed2_len1024_lora32_1e-05_dataUnified-Feedback/logs/checkpoint-3536'
 wandb_name="ppo_rm2B_lr1e-5_klreg0.0_normrewards"
 CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 9989 --num_processes ${num_processes} rlhf/ppo/ppo.py \
     --base_model_name ${base_model_name} \
@@ -47,4 +47,3 @@ CUDA_VISIBLE_DEVICES=${gpu} accelerate launch --main_process_port 9989 --num_pro
     --normalize_rewards True \
     --learning_rate 1e-5 \
 
-   

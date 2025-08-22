@@ -44,14 +44,14 @@ def build_dataset_UF4gold_score(data_path, tokenizer, split='', size=None, max_l
     def formatting_func(example):
         kwargs = {"padding": 'max_length', "truncation": True, "max_length": max_length, "return_tensors": "pt"}
         example['source_id'] = source_dict[example['source']]
-        
+
         chosen_messages = example['conv_A']
         rejected_messages = example['conv_B']
 
         if 'summarize' in example['source']:
             chosen_messages[0]['content'] = 'Generate one-sentence summary for the following post: ' + chosen_messages[0]['content'].strip()
             rejected_messages[0]['content'] = 'Generate one-sentence summary for the following post: ' + rejected_messages[0]['content'].strip()
-        
+
         prompt_plus_chosen_response = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
         prompt_plus_rejected_response = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
         tokens_chosen = tokenizer.encode_plus(prompt_plus_chosen_response, **kwargs)

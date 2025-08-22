@@ -15,7 +15,7 @@ num_train_epochs=2
 gradient_accumulation_steps=4
 
 weight_ratio=0.01
-layer_type='mlp' 
+layer_type='mlp'
 sft_only=True
 reference_free=True
 

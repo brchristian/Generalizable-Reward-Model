@@ -9,7 +9,7 @@ from transformers import (
 
 
 def load_train_eval_dataset(data_path, tokenizer, size=None, model_name=''):
-    train_dataset = build_dataset_UF(data_path, tokenizer, split='train', size=size, model_name=model_name) 
+    train_dataset = build_dataset_UF(data_path, tokenizer, split='train', size=size, model_name=model_name)
     eval_dataset = build_dataset_UF(data_path, tokenizer, split='test', model_name=model_name)
 
     return train_dataset, eval_dataset
@@ -17,7 +17,7 @@ def load_train_eval_dataset(data_path, tokenizer, size=None, model_name=''):
 
 # for UnifiedFeedback
 def build_dataset_UF(data_path, tokenizer, split='train', size=None, model_name=''):
-    
+
     ds = load_dataset(data_path, split=split)
     # filter data with the same rating
     ds = ds.filter(lambda example: example['conv_A_rating'] != example['conv_B_rating'], num_proc=30)
@@ -35,11 +35,11 @@ def build_dataset_UF(data_path, tokenizer, split='train', size=None, model_name=
             chosen_messages = example['conv_B']
             rejected_messages = example['conv_A']
             margin = example['conv_B_rating'] - example['conv_A_rating']
-        
+
         if 'summarize' in example['source']:
             chosen_messages[0]['content'] = 'Generate one-sentence summary for the following post: ' + chosen_messages[0]['content'].strip()
             rejected_messages[0]['content'] = 'Generate one-sentence summary for the following post: ' + rejected_messages[0]['content'].strip()
-        
+
         prompt_plus_chosen_response = tokenizer.apply_chat_template(chosen_messages, tokenize=False)
         prompt_plus_rejected_response = tokenizer.apply_chat_template(rejected_messages, tokenize=False)
         tokens_chosen = tokenizer.encode_plus(prompt_plus_chosen_response, **kwargs)
@@ -63,9 +63,9 @@ def build_dataset_UF(data_path, tokenizer, split='train', size=None, model_name=
             return {
                 "input_ids_chosen": tokens_chosen["input_ids"][0], "attention_mask_chosen": tokens_chosen["attention_mask"][0],
                 "input_ids_rejected": tokens_rejected["input_ids"][0], "attention_mask_rejected": tokens_rejected["attention_mask"][0],
-                "margin": margin, 
+                "margin": margin,
             }
-        
+
 
     ds = ds.map(formatting_func, batched=False, num_proc=10)
     # ds = ds.filter(lambda x: len(x["input_ids_chosen"]) <= script_args.max_length and len(x["input_ids_rejected"]) <= script_args.max_length, num_proc=30)
@@ -84,18 +84,18 @@ def build_datasets_inference(data_path, tokenizer, split='', size=None, max_leng
     ds = load_dataset(data_path, split=split)
     if size is not None:
         ds = ds.select(range(size))
-    
+
     def formatting_func(example):
         kwargs = {"padding": 'max_length', "truncation": True, "max_length": max_length, "return_tensors": "pt"}
-        
+
         if not isinstance(example['output'], str):
             answer = ''
         else:
             answer = example['output']
-            
+
         messages = [{"role": "user", "content": example['input']},
                 {"role": "assistant", "content": answer}]
-      
+
         prompt_plus_response = tokenizer.apply_chat_template(messages, tokenize=False)
         tokens = tokenizer.encode_plus(prompt_plus_response, **kwargs)
 
