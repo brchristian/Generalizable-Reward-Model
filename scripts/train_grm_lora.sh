@@ -3,9 +3,6 @@
 export WANDB_ENTITY="base-model-values"
 export WANDB_PROJECT="Ray2333_Gemma2-2B_repro"
 
-# Set up HF token
-export HUGGINGFACE_HUB_TOKEN=$(cat /mnt/big/brian/.cache/huggingface/token)
-
 devices=0,1,2
 n_gpu=3
 dataset_name='Skywork/Skywork-Reward-Preference-80K-v0.2'
