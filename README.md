@@ -4,7 +4,7 @@ Code for NeurIPS 2024 paper ["Regularizing Hidden States Enables Learning Genera
 
 ## Models
 
-Check out our GRM series below, which are evlauated on [reward-bench](https://huggingface.co/spaces/allenai/reward-bench).
+Check out our GRM series below, which are evaluated on [reward-bench](https://huggingface.co/spaces/allenai/reward-bench).
 
 
 
