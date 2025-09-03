@@ -6,7 +6,6 @@
 #SBATCH -A summerfield.prj
 #SBATCH -p gpu_short
 #SBATCH --gres=gpu:1
-#SBATCH --constraint="a100"
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
 #SBATCH -t 4:00:00
@@ -14,8 +13,7 @@
 #SBATCH -e logs/%x-%j.err
 
 # (Optional) constrain to newer GPUs if you want (uncomment one that matches your cluster)
-# #SBATCH --constraint=a100
-# #SBATCH --constraint=l40s
+#SBATCH --constraint=a100
 
 # Load your environment
 module purge
