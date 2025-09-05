@@ -4,11 +4,11 @@
 
 #SBATCH -J train_grm_lora_bmrc
 #SBATCH -A summerfield.prj
-#SBATCH -p gpu_short
+#SBATCH -p gpu_long
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH -t 4:00:00
+#SBATCH -t 24:00:00
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.err
 
@@ -60,8 +60,8 @@ python run_grm_reward_train.py \
   --sft_only True \
   --reference_free True \
   --report_to wandb \
-  --wandb_name "GRM_bf16_seed1" \
-  --output_dir ../save_reward_models/GRM_Gemma2-2B_ckpts \
+  --wandb_name "GRM_bf16_batchsize16_seed1" \
+  --output_dir ../save_reward_models/GRM-Gemma2-2B-sftreg-seed1 \
   --save_strategy steps \
   --save_steps 1000 \
   --save_total_limit 12 \
