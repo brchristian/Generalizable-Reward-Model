@@ -46,7 +46,6 @@ python run_grm_reward_train.py \
   --bf16 False \
   --base_model "Ray2333/GRM-Gemma2-2B-sftreg" \
   --dataset "Skywork/Skywork-Reward-Preference-80K-v0.2" \
-  --dataset_mode "400k" \
   --per_device_train_batch_size 4 \
   --gradient_accumulation_steps 4 \
   --learning_rate 1e-5 \

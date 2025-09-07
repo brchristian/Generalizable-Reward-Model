@@ -43,7 +43,6 @@ cd /well/summerfield/projects/base_model_values/Ray233_RM_training/reward_models
 python run_grm_reward_train.py \
   --base_model "google/gemma-2-2b-it" \
   --dataset "Skywork/Skywork-Reward-Preference-80K-v0.2" \
-  --dataset_mode "400k" \
   --per_device_train_batch_size 4 \
   --gradient_accumulation_steps 4 \
   --learning_rate 1e-5 \
