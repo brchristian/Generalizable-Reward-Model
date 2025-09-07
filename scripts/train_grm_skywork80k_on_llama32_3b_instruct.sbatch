@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH -t 28:00:00
+#SBATCH -t 60:00:00
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.err
 
@@ -41,7 +41,7 @@ echo "------------------------------------------------"
 cd /well/summerfield/projects/base_model_values/Ray233_RM_training/reward_models
 
 python run_grm_reward_train.py \
-  --base_model "google/gemma-2-2b-it" \
+  --base_model "meta-llama/Llama-3.2-3B-Instruct" \
   --dataset "Skywork/Skywork-Reward-Preference-80K-v0.2" \
   --per_device_train_batch_size 4 \
   --gradient_accumulation_steps 4 \
@@ -59,8 +59,8 @@ python run_grm_reward_train.py \
   --sft_only True \
   --reference_free True \
   --report_to wandb \
-  --wandb_name "GRM_skywork80_on_gemma2_2b_it_seed1" \
-  --output_dir ../save_reward_models/skywork80_on_gemma2_2b_it \
+  --wandb_name "GRM_Llama_32_3B_Instruct_seed1" \
+  --output_dir ../save_reward_models/Llama_32_3B_Instruct \
   --save_strategy steps \
   --save_steps 1000 \
   --save_total_limit 12 \
@@ -69,5 +69,5 @@ python run_grm_reward_train.py \
   --logging_steps 100 \
   --load_best_model_at_end True \
   --metric_for_best_model eval_reward_accuracy \
-  --greater_is_better False \
+  --greater_is_better True \
   --save_safetensors True
