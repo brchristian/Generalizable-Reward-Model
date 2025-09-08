@@ -56,6 +56,14 @@ class ScriptArguments:
     save_strategy: Optional[str] = field(default="epoch")
     save_steps: Optional[int] = field(default=1000)
     debug: Optional[bool] = field(default=False, metadata={'help': 'if debug=True, only train with 100 samples'})
+    # Checkpointing
+    output_dir: Optional[str] = field(default=None, metadata={"help": "Overrides default output path"})
+    save_total_limit: Optional[int] = field(default=12)
+    logging_steps: Optional[int] = field(default=100)
+    load_best_model_at_end: Optional[bool] = field(default=True)
+    metric_for_best_model: Optional[str] = field(default="eval_loss")
+    greater_is_better: Optional[bool] = field(default=False)
+    save_safetensors: Optional[bool] = field(default=True)
     
 
 
@@ -69,8 +77,11 @@ else:
 
 device = Accelerator().local_process_index 
 
+# pick a tidy default if user didn't pass --output_dir
+final_output_dir = script_args.output_dir or os.path.join(output_name, 'checkpoints')
+
 training_args = TrainingArguments(
-    output_dir=os.path.join(output_name, 'logs'),
+    output_dir=final_output_dir,
     learning_rate=script_args.learning_rate,
     per_device_train_batch_size=script_args.per_device_train_batch_size,
     per_device_eval_batch_size=script_args.per_device_eval_batch_size,
@@ -83,7 +94,8 @@ training_args = TrainingArguments(
     gradient_checkpointing=script_args.gradient_checkpointing, 
     bf16=script_args.bf16,
     logging_strategy="steps",
-    logging_steps=10,
+    logging_steps=script_args.logging_steps,
+    save_total_limit=script_args.save_total_limit,
     warmup_ratio=0.03,
     optim=script_args.optim,
     lr_scheduler_type=script_args.lr_scheduler_type,
@@ -93,6 +105,10 @@ training_args = TrainingArguments(
     remove_unused_columns=False,
     gradient_checkpointing_kwargs={"use_reentrant": False},
     ddp_find_unused_parameters=False,
+    load_best_model_at_end=script_args.load_best_model_at_end,
+    metric_for_best_model=script_args.metric_for_best_model,
+    greater_is_better=script_args.greater_is_better,
+    save_safetensors=script_args.save_safetensors,
 )
 
 # Load the tokenizer.
