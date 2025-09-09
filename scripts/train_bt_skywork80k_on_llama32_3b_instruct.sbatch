@@ -65,6 +65,6 @@ python run_reward_models_train.py \
   --eval_steps 1000 \
   --logging_steps 100 \
   --load_best_model_at_end True \
-  --metric_for_best_model eval_reward_accuracy \
+  --metric_for_best_model eval_accuracy \
   --greater_is_better True \
   --save_safetensors True
