@@ -73,6 +73,13 @@ class ScriptArguments:
     metric_for_best_model: Optional[str] = field(default="eval_loss")
     greater_is_better: Optional[bool] = field(default=False)
     save_safetensors: Optional[bool] = field(default=True)
+    # Hub arguments
+    push_to_hub: Optional[bool] = field(default=False)
+    hub_model_id: Optional[str] = field(default=None)
+    hub_private_repo: Optional[bool] = field(default=False)
+    hub_strategy: Optional[str] = field(default="every_save")
+    # Training seed
+    seed: Optional[int] = field(default=42)
     
 
 
@@ -118,6 +125,11 @@ training_args = TrainingArguments(
     metric_for_best_model=script_args.metric_for_best_model,
     greater_is_better=script_args.greater_is_better,
     save_safetensors=script_args.save_safetensors,
+    push_to_hub=script_args.push_to_hub,
+    hub_model_id=script_args.hub_model_id,
+    hub_private_repo=script_args.hub_private_repo,
+    hub_strategy=script_args.hub_strategy,
+    seed=script_args.seed,
 )
 
 # Callback to save the value head
