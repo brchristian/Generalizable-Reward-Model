@@ -8,6 +8,7 @@ n_gpu=3
 dataset_name='Skywork/Skywork-Reward-Preference-80K-v0.2'
 dataset_mode='400k'
 base_model='Ray2333/GRM-Gemma2-2B-sftreg'
+attn_implementation='eager' # Eager recommended for Gemma 2, otherwise flash_attention_2 is default
 wandb_name="GRM_seed1"
 log_dir='../save_reward_models'
 main_process_port=9995
@@ -34,12 +35,13 @@ eval_steps=1000
 logging_steps=100
 load_best_model_at_end=True
 metric_for_best_model="eval_reward_accuracy"
-greater_is_better=False
+greater_is_better=True
 save_safetensors=True
 
 cd ../reward_models
 CUDA_VISIBLE_DEVICES=${devices} accelerate launch --num_processes ${n_gpu} --main_process_port ${main_process_port} run_grm_reward_train.py \
   --base_model ${base_model} --wandb_name ${wandb_name} --log_dir ${log_dir} \
+  --attn_implementation ${attn_implementation} \
   --num_train_epochs ${num_train_epochs} --max_length ${max_length} \
   --use_lora True --gradient_accumulation_steps ${gradient_accumulation_steps} \
   --learning_rate ${learning_rate} \
