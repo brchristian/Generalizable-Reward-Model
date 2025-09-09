@@ -49,7 +49,7 @@ def upload_checkpoint(checkpoint_path, hub_model_id, private=True):
             model_name="Ray2333/GRM-Gemma2-2B-sftreg",
             peft_name=checkpoint_path,
             tokenizer=tokenizer,
-            device="auto"
+            device="cpu"
         )
 
         tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
@@ -64,24 +64,24 @@ def upload_checkpoint(checkpoint_path, hub_model_id, private=True):
         print(f"DEBUG: About to upload to hub_model_id: {hub_model_id}")
         print(f"\nUploading to {hub_model_id}...")
         
-        # # Upload model
-        # model.push_to_hub(
-        #     repo_id=hub_model_id,
-        #     private=private,
-        #     commit_message="Upload GRM reward model checkpoint"
-        # )
-        # print("✓ Model uploaded")
+        # Upload model
+        model.push_to_hub(
+            repo_id=hub_model_id,
+            private=private,
+            commit_message="Upload GRM reward model checkpoint"
+        )
+        print("✓ Model uploaded")
         
-        # # Upload tokenizer
-        # tokenizer.push_to_hub(
-        #     repo_id=hub_model_id,
-        #     private=private,
-        #     commit_message="Upload tokenizer"
-        # )
-        # print("✓ Tokenizer uploaded")
+        # Upload tokenizer
+        tokenizer.push_to_hub(
+            repo_id=hub_model_id,
+            private=private,
+            commit_message="Upload tokenizer"
+        )
+        print("✓ Tokenizer uploaded")
         
-        # print(f"\n🎉 Upload completed!")
-        # print(f"Model available at: https://huggingface.co/{hub_model_id}")
+        print(f"\n🎉 Upload completed!")
+        print(f"Model available at: https://huggingface.co/{hub_model_id}")
         
         return True
         
@@ -102,8 +102,8 @@ def main():
     print("\n" + "="*50)
     
     # Configuration - EDIT THESE VALUES
-    MODEL_FOLDER = "GRM-Gemma2-2B-sftreg-seed1"  # Folder where model is saved
-    CHECKPOINT = "9578"  # Checkpoint number to upload
+    MODEL_FOLDER = "GRM_Gemma2-2B_ckpts"  # Folder where model is saved
+    CHECKPOINT = "12772"  # Checkpoint number to upload
     CHECKPOINT_PATH = f"save_reward_models/{MODEL_FOLDER}/checkpoint-{CHECKPOINT}"
     HUB_MODEL_ID = f"brianchristian/{MODEL_FOLDER}_checkpoint-{CHECKPOINT}"
     PRIVATE = True  # Set to False for public repo

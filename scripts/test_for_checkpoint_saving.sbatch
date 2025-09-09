@@ -1,7 +1,6 @@
 #!/bin/bash
 
 #SBATCH -D /well/summerfield/projects/base_model_values
-
 #SBATCH -J train_grm_lora_bmrc
 #SBATCH -A summerfield.prj
 #SBATCH -p gpu_short
@@ -11,16 +10,27 @@
 #SBATCH -t 4:00:00
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.err
-
-# (Optional) constrain to newer GPUs if you want (uncomment one that matches your cluster)
 #SBATCH --constraint=a100
+
+# ============================================
+# CONFIGURATION VARIABLES (edit these!)
+# ============================================
+MODEL_TYPE="GRM" # or "BT" for Bradley-Terry
+TRAINING_TYPE="LoRA" # or "Full" for full fine-tuning TODO: IMPLEMENT
+DATASET="Skywork/Skywork-Reward-Preference-80K-v0.2"
+DATASET_NAME="skywork80k"
+BASE_MODEL_PATH="Qwen/Qwen2.5-0.5B-Instruct"
+BASE_MODEL_NAME="${BASE_MODEL_PATH##*/}"  # Automatically extract model name after last slash
+SEED=1
+# ============================================
+
+
+FULL_RUN_NAME="${MODEL_TYPE}_${TRAINING_TYPE}_${DATASET_NAME}_on_${BASE_MODEL_NAME}_seed${SEED}"
 
 # Load your environment
 module purge
-# module load cuda/12.1  # only if your env needs a module
-# module load anaconda   # or mamba
 source ~/.bashrc
-conda activate Ray2333_GRM   # env should have torch, transformers, accelerate, peft, etc.
+conda activate Ray2333_GRM
 
 # Set up Weights & Biases
 export WANDB_ENTITY="base-model-values"
@@ -31,18 +41,31 @@ export HUGGINGFACE_HUB_TOKEN=${HF_TOKEN}
 mkdir -p logs
 
 echo "------------------------------------------------" 
-echo "Run on host: "`hostname` 
-echo "Operating system: "`uname -s` 
-echo "Username: "`whoami` 
-echo "Started at: "`date` 
-echo "------------------------------------------------" 
+echo "Run on host: $(hostname)"
+echo "Operating system: $(uname -s)"
+echo "Username: $(whoami)"
+echo "Started at: $(date)"
+echo "------------------------------------------------"
+echo "Model: ${BASE_MODEL_PATH}"
+echo "Seed: ${SEED}"
+echo "------------------------------------------------"
+
+# Determine script name and prefix based on training type
+if [ "${MODEL_TYPE}" = "GRM" ]; then
+    SCRIPT_NAME="run_grm_reward_train.py"
+else
+    SCRIPT_NAME="run_reward_models_train.py"
+fi
 
 # Navigate to the directory with your script (if needed)
+# BMRC
 cd /well/summerfield/projects/base_model_values/Ray233_RM_training/reward_models
+# NOOPER
+# cd /mnt/quick/brian/base_model_values/reward_model_training/Ray2333_GRM-gemma2-2B-rewardmodel-ft/Generalizable-Reward-Model/reward_models
 
-python run_grm_reward_train.py \
-  --base_model "Qwen/Qwen2.5-1.5B-Instruct" \
-  --dataset "Skywork/Skywork-Reward-Preference-80K-v0.2" \
+python ${SCRIPT_NAME} \
+  --base_model "${BASE_MODEL_PATH}" \
+  --dataset "${DATASET}" \
   --per_device_train_batch_size 4 \
   --gradient_accumulation_steps 4 \
   --learning_rate 1e-5 \
@@ -50,7 +73,6 @@ python run_grm_reward_train.py \
   --max_length 1024 \
   --bf16 True \
   --gradient_checkpointing True \
-  --attn_implementation eager \
   --use_lora True \
   --lora_r 32 \
   --lora_alpha 64 \
@@ -59,8 +81,8 @@ python run_grm_reward_train.py \
   --sft_only True \
   --reference_free True \
   --report_to wandb \
-  --wandb_name "GRM_skywork80k_on_Qwen2.5_0.5B_Instruct_seed1" \
-  --output_dir ../save_reward_models/GRM_Qwen2.5_0.5B_Instruct_seed1 \
+  --wandb_name "${FULL_RUN_NAME}" \
+  --output_dir "../save_reward_models/${FULL_RUN_NAME}" \
   --save_strategy steps \
   --save_steps 1000 \
   --save_total_limit 12 \
@@ -72,8 +94,7 @@ python run_grm_reward_train.py \
   --greater_is_better True \
   --save_safetensors True \
   --push_to_hub True \
-  --hub_model_id "Ray2333/GRM_skywork80k_on_Qwen2.5_0.5B_Instruct_seed1" \
+  --hub_model_id "brianchristian/${FULL_RUN_NAME}" \
   --hub_private_repo True \
-  --hub_strategy every_save \
-  --seed 1 \
-  
+  --hub_strategy end \
+  --seed ${SEED} \

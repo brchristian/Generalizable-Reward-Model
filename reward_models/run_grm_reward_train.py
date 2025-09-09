@@ -20,6 +20,86 @@ from load_datasets import load_train_eval_dataset
 from utils import print_trainable_parameters, grm_compute_metrics
 from grm_utils import AutoModelForCausalLMWithValueHead
 
+from huggingface_hub import HfApi, create_commit, CommitOperationAdd, CommitOperationDelete
+try:
+    from huggingface_hub import HfHubHTTPError
+except ImportError:
+    from requests import HTTPError as HfHubHTTPError
+import glob, shutil, tempfile
+
+class PromoteAndTagCallback(TrainerCallback):
+    """
+    On each Trainer save:
+      - copy the newest checkpoint's *loadable* files into a temp staging dir
+      - replace the *repo root* with those files (atomic commit)
+      - create a tag 'checkpoint-<step>' pointing at that commit
+    """
+    def __init__(self, repo_id: str, keep_root={"README.md","LICENSE",".gitattributes"}, hf_token=None):
+        super().__init__()
+        self.repo_id = repo_id
+        self.keep_root = set(keep_root)
+        self.api = HfApi(token=hf_token)
+        # make sure repo exists
+        try:
+            self.api.repo_info(repo_id, repo_type="model")
+        except HfHubHTTPError:
+            self.api.create_repo(repo_id, repo_type="model", exist_ok=True, private=True)
+
+        # Files to promote (cover full FT and LoRA)
+        self.patterns = [
+            "config.json","generation_config.json",
+            "model.safetensors","pytorch_model.bin",
+            "adapter_config.json","adapter_model.safetensors","peft_config.json",
+            "tokenizer.json","tokenizer_config.json","tokenizer.model",
+            "special_tokens_map.json","spiece.model","vocab.json","merges.txt",
+            "v_head.pt",
+        ]
+
+    def on_save(self, args, state, control, **kwargs):
+        ckpt = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
+        if not os.path.isdir(ckpt): return
+
+        with tempfile.TemporaryDirectory() as staging:
+            picked = []
+            for pat in self.patterns:
+                for src in glob.glob(os.path.join(ckpt, pat)):
+                    dst = os.path.join(staging, os.path.basename(src))
+                    shutil.copy2(src, dst)
+                    picked.append(os.path.basename(src))
+            if not picked:
+                print(f"[PromoteAndTag] no loadable files found in {ckpt}")
+                return
+
+            # delete old root (except keepers), add new files
+            ops = []
+            try:
+                info = self.api.repo_info(self.repo_id, repo_type="model")
+                root_files = [f.rfilename for f in info.siblings if "/" not in f.rfilename]
+                for rf in root_files:
+                    if rf not in self.keep_root:
+                        ops.append(CommitOperationDelete(path_in_repo=rf))
+            except Exception as e:
+                print(f"[PromoteAndTag] warn listing root: {e}")
+
+            for fname in os.listdir(staging):
+                ops.append(CommitOperationAdd(
+                    path_in_repo=fname,
+                    path_or_fileobj=os.path.join(staging, fname)
+                ))
+
+            commit = create_commit(
+                repo_id=self.repo_id,
+                repo_type="model",
+                operations=ops,
+                commit_message=f"Promote checkpoint-{state.global_step} to repo root",
+                token=self.api.token,
+            )
+            tag = f"checkpoint-{state.global_step}"
+            try:
+                self.api.create_tag(self.repo_id, tag=tag, revision=commit.oid, repo_type="model")
+                print(f"[PromoteAndTag] tagged {tag}")
+            except Exception as e:
+                print(f"[PromoteAndTag] warn create_tag: {e}")
 
 @dataclass
 class ScriptArguments:
@@ -259,5 +339,12 @@ trainer_params = {
 # Train the model, woohoo.
 trainer = GRMRewardTrainer(**trainer_params)
 trainer.add_callback(SaveVHeadCallback())
+if script_args.push_to_hub and script_args.hub_model_id:
+    trainer.add_callback(
+        PromoteAndTagCallback(
+            repo_id=script_args.hub_model_id,
+            hf_token=os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
+        )
+    )
 print('training start')
 trainer.train()
