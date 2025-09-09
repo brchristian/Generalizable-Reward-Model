@@ -12,6 +12,7 @@ from transformers import (
     AutoTokenizer,
     HfArgumentParser,
     TrainingArguments,
+    TrainerCallback,
     AutoModelForCausalLM
 )
 from grm_reward_trainer import GRMDataCollatorWithPadding, GRMRewardTrainer
@@ -119,6 +120,48 @@ training_args = TrainingArguments(
     save_safetensors=script_args.save_safetensors,
 )
 
+# Callback to save the value head
+# (By default only LoRA adapters are saved)
+class SaveVHeadCallback(TrainerCallback):
+    """
+    Save the reward value head alongside each checkpoint.
+    Creates:
+      - <output_dir>/checkpoint-<step>/v_head.pt  on every save
+      - <output_dir>/v_head.pt                    at train end
+      - <best_model_checkpoint>/v_head.pt         if available
+    """
+    @staticmethod
+    def _unwrap_to_vhead(model):
+        # PeftModel -> base_model (LoraModel) -> model (AutoModelForCausalLMWithValueHead) -> v_head
+        inner = getattr(model, "base_model", model)
+        inner = getattr(inner, "model", inner)
+        return getattr(inner, "v_head", None)
+
+    def on_save(self, args, state, control, **kwargs):
+        v_head = self._unwrap_to_vhead(kwargs["model"])
+        if v_head is None:
+            return
+        ckpt_dir = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
+        os.makedirs(ckpt_dir, exist_ok=True)
+        torch.save(v_head.state_dict(), os.path.join(ckpt_dir, "v_head.pt"))
+        print(f"[SaveVHeadCallback] wrote {ckpt_dir}/v_head.pt")
+
+    def on_train_end(self, args, state, control, **kwargs):
+        v_head = self._unwrap_to_vhead(kwargs["model"])
+        if v_head is None:
+            return
+        # save final head at top level
+        torch.save(v_head.state_dict(), os.path.join(args.output_dir, "v_head.pt"))
+        print(f"[SaveVHeadCallback] wrote {args.output_dir}/v_head.pt")
+        # also save into best checkpoint if Trainer selected one
+        best = getattr(state, "best_model_checkpoint", None)
+        if best:
+            try:
+                torch.save(v_head.state_dict(), os.path.join(best, "v_head.pt"))
+                print(f"[SaveVHeadCallback] wrote {best}/v_head.pt (best model)")
+            except Exception as e:
+                print(f"[SaveVHeadCallback] warn: {e}")
+
 # Load the tokenizer.
 tokenizer = AutoTokenizer.from_pretrained(script_args.base_model, use_fast = False)
 tokenizer.max_length = script_args.max_length
@@ -203,5 +246,6 @@ trainer_params = {
 
 # Train the model, woohoo.
 trainer = GRMRewardTrainer(**trainer_params)
+trainer.add_callback(SaveVHeadCallback())
 print('training start')
 trainer.train()
