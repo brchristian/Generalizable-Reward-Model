@@ -37,36 +37,51 @@ def upload_checkpoint(checkpoint_path, hub_model_id, private=True):
         return False
     
     try:
-        from transformers import AutoTokenizer
+        from transformers import AutoTokenizer, AutoConfig
         from grm_utils import AutoModelForCausalLMWithValueHead
+        from grm_utils import load_model_withhead
         
         print(f"Loading model from {checkpoint_path}...")
-        model = AutoModelForCausalLMWithValueHead.from_pretrained(checkpoint_path)
         tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
-        
+        config = AutoConfig.from_pretrained("Ray2333/GRM-Gemma2-2B-sftreg")
+        config.attn_implementation = "eager"
+        model = load_model_withhead(
+            model_name="Ray2333/GRM-Gemma2-2B-sftreg",
+            peft_name=checkpoint_path,
+            tokenizer=tokenizer,
+            device="auto"
+        )
+
+        tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
+    except Exception as e:
+        print(f"❌ Model load error: {e}")
+        return False
+
+    try:
         print("✓ Model and tokenizer loaded successfully")
         print(f"Model type: {type(model).__name__}")
         
+        print(f"DEBUG: About to upload to hub_model_id: {hub_model_id}")
         print(f"\nUploading to {hub_model_id}...")
         
-        # Upload model
-        model.push_to_hub(
-            hub_model_id,
-            private=private,
-            commit_message="Upload GRM reward model checkpoint"
-        )
-        print("✓ Model uploaded")
+        # # Upload model
+        # model.push_to_hub(
+        #     repo_id=hub_model_id,
+        #     private=private,
+        #     commit_message="Upload GRM reward model checkpoint"
+        # )
+        # print("✓ Model uploaded")
         
-        # Upload tokenizer
-        tokenizer.push_to_hub(
-            hub_model_id,
-            private=private, 
-            commit_message="Upload tokenizer"
-        )
-        print("✓ Tokenizer uploaded")
+        # # Upload tokenizer
+        # tokenizer.push_to_hub(
+        #     repo_id=hub_model_id,
+        #     private=private,
+        #     commit_message="Upload tokenizer"
+        # )
+        # print("✓ Tokenizer uploaded")
         
-        print(f"\n🎉 Upload completed!")
-        print(f"Model available at: https://huggingface.co/{hub_model_id}")
+        # print(f"\n🎉 Upload completed!")
+        # print(f"Model available at: https://huggingface.co/{hub_model_id}")
         
         return True
         
@@ -78,28 +93,34 @@ def main():
     print("=== GRM Checkpoint Upload Tool ===\n")
     
     # Test imports first
-    print("Testing imports...")
-    if not test_imports():
-        print("\n❌ Please make sure you're in the right conda environment:")
-        print("conda activate value-from-language")
-        return 1
+    # print("Testing imports...")
+    # if not test_imports():
+    #     print("\n❌ Please make sure you're in the right conda environment:")
+    #     print("conda activate value-from-language")
+    #     return 1
     
     print("\n" + "="*50)
     
     # Configuration - EDIT THESE VALUES
-    CHECKPOINT_PATH = "save_reward_models/GRM_Gemma2-2B_ckpts/checkpoint-2000"
-    HUB_MODEL_ID = "brianchristian/test-grm-checkpoint"  # Change this!
+    MODEL_FOLDER = "GRM-Gemma2-2B-sftreg-seed1"  # Folder where model is saved
+    CHECKPOINT = "9578"  # Checkpoint number to upload
+    CHECKPOINT_PATH = f"save_reward_models/{MODEL_FOLDER}/checkpoint-{CHECKPOINT}"
+    HUB_MODEL_ID = f"brianchristian/{MODEL_FOLDER}_checkpoint-{CHECKPOINT}"
     PRIVATE = True  # Set to False for public repo
     
+    print(f"DEBUG: CHECKPOINT_PATH = {CHECKPOINT_PATH}")
+    print(f"DEBUG: HUB_MODEL_ID = {HUB_MODEL_ID}")
+    print(f"DEBUG: Are they different? {CHECKPOINT_PATH != HUB_MODEL_ID}")
+
     print(f"Checkpoint: {CHECKPOINT_PATH}")
     print(f"Hub Model ID: {HUB_MODEL_ID}")
     print(f"Private: {PRIVATE}")
     
-    # Confirm before upload
-    response = input("\nProceed with upload? (yes/no): ")
-    if response.lower() not in ['yes', 'y']:
-        print("Upload cancelled")
-        return 0
+    # # Confirm before upload
+    # response = input("\nProceed with upload? (yes/no): ")
+    # if response.lower() not in ['yes', 'y']:
+    #     print("Upload cancelled")
+    #     return 0
     
     # Do the upload
     success = upload_checkpoint(CHECKPOINT_PATH, HUB_MODEL_ID, PRIVATE)
