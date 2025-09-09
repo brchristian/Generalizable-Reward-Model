@@ -234,7 +234,9 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
 
     if 'Mistral' not in model_name:
         model_config['attn_implementation'] = "flash_attention_2"
-        
+    if 'Gemma2' in model_name:
+        model_config['attn_implementation'] = "eager"
+
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, **model_config)
     model.pretrained_model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
