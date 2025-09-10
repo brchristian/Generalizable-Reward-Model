@@ -113,7 +113,7 @@ class ScriptArguments:
     max_length: Optional[int] = field(default=1024) 
     gradient_checkpointing: Optional[bool] = field(default=True)
     bf16: Optional[bool] = field(default=True)
-    attn_implementation: Optional[str] = field(default="flash_attention_2")
+    attn_implementation: Optional[str] = field(default="sdpa")
     # data
     dataset: Optional[str] = field(default='llm-blender/Unified-Feedback')
     dataset_mode: Optional[str] = field(default='', metadata={"help": "use from '', '40k', and '400k' for the paper's experiments"},)
@@ -279,7 +279,7 @@ if len(script_args.attn_implementation):
 
 ### load model
 if not script_args.reference_free:
-    reference_model = AutoModelForCausalLM.from_pretrained(script_args.base_model, device_map=device, torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2")
+    reference_model = AutoModelForCausalLM.from_pretrained(script_args.base_model, device_map=device, torch_dtype=torch.bfloat16, attn_implementation="sdpa")
     reference_model.resize_token_embeddings(len(tokenizer))
     reference_model.config.pad_token_id = tokenizer.pad_token_id
 
