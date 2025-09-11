@@ -63,6 +63,12 @@ cd /well/summerfield/projects/base_model_values/Ray233_RM_training/reward_models
 # NOOPER
 # cd /mnt/quick/brian/base_model_values/reward_model_training/Ray2333_GRM-gemma2-2B-rewardmodel-ft/Generalizable-Reward-Model/reward_models
 
+# For automatically pushing to HuggingFace Hub (optional)
+# --push_to_hub True \
+# --hub_model_id "brianchristian/${FULL_RUN_NAME}" \
+# --hub_private_repo True \
+# --hub_strategy end \
+
 python ${SCRIPT_NAME} \
   --base_model "${BASE_MODEL_PATH}" \
   --dataset "${DATASET}" \
@@ -93,8 +99,4 @@ python ${SCRIPT_NAME} \
   --metric_for_best_model eval_reward_accuracy \
   --greater_is_better True \
   --save_safetensors True \
-  --push_to_hub True \
-  --hub_model_id "brianchristian/${FULL_RUN_NAME}" \
-  --hub_private_repo True \
-  --hub_strategy end \
   --seed ${SEED} \
