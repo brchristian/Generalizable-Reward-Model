@@ -30,7 +30,7 @@ class ScriptArguments:
     max_length: Optional[int] = field(default=1024) 
     gradient_checkpointing: Optional[bool] = field(default=True)
     bf16: Optional[bool] = field(default=True)
-    attn_implementation: Optional[str] = field(default="flash_attention_2")
+    attn_implementation: Optional[str] = field(default="sdpa")
     # data
     dataset: Optional[str] = field(default='llm-blender/Unified-Feedback')
     dataset_mode: Optional[str] = field(default='', metadata={"help": "use from '', '40k', and '400k' for the paper's experiments"},)
