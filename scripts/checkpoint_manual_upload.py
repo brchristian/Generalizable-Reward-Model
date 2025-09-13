@@ -61,6 +61,10 @@ def upload_checkpoint(checkpoint_path, hub_model_id, private=True):
         print("✓ Model and tokenizer loaded successfully")
         print(f"Model type: {type(model).__name__}")
         
+        # Ensure num_labels is set correctly in config for saving/loading
+        if hasattr(model, 'config'):
+            model.config.num_labels = 1
+
         print(f"DEBUG: About to upload to hub_model_id: {hub_model_id}")
         print(f"\nUploading to {hub_model_id}...")
         

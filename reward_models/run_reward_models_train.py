@@ -164,6 +164,8 @@ if script_args.freeze_pretrained:
 
 model.resize_token_embeddings(len(tokenizer))
 model.config.pad_token_id = tokenizer.pad_token_id
+# Ensure num_labels is set correctly in config for saving/loading
+model.config.num_labels = 1
 print_trainable_parameters(model)
 
 # Define the trainer parameters

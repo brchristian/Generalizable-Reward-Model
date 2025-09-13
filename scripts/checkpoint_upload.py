@@ -28,6 +28,11 @@ def main():
         # Load the model and tokenizer
         model = AutoModelForCausalLMWithValueHead.from_pretrained(args.checkpoint_path)
         tokenizer = AutoTokenizer.from_pretrained(args.checkpoint_path)
+
+        # Ensure num_labels is set correctly in config for saving/loading
+        if hasattr(model.pretrained_model, 'config'):
+            model.pretrained_model.config.num_labels = 1
+
         print("✓ Model and tokenizer loaded successfully")
         
         # Print model info
