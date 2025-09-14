@@ -82,7 +82,6 @@ python ${SCRIPT_NAME} \
   --use_lora True \
   --lora_r 32 \
   --lora_alpha 64 \
-  --weight_ratio 0.01 \
   --report_to wandb \
   --wandb_name "${FULL_RUN_NAME}" \
   --output_dir "../save_reward_models/${FULL_RUN_NAME}" \
