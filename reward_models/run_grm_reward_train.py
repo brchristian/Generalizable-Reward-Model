@@ -51,6 +51,7 @@ class PromoteAndTagCallback(TrainerCallback):
             "model.safetensors","pytorch_model.bin",
             "adapter_config.json","adapter_model.safetensors","peft_config.json",
             "tokenizer.json","tokenizer_config.json","tokenizer.model",
+            "added_tokens.json",
             "special_tokens_map.json","spiece.model","vocab.json","merges.txt",
             "v_head.pt",
         ]
