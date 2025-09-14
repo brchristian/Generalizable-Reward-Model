@@ -118,6 +118,7 @@ class ScriptArguments:
     # data
     dataset: Optional[str] = field(default='llm-blender/Unified-Feedback')
     dataset_mode: Optional[str] = field(default='', metadata={"help": "use from '', '40k', and '400k' for the paper's experiments"},)
+    dataset_step_size: Optional[int] = field(default=None, metadata={"help": "Step size for dataset subsampling (e.g., 2 for every 2nd sample, 20 for every 20th sample)"},)
     # lora
     use_lora: Optional[bool] = field(default=True)
     lora_target_modules: Optional[List[str]] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"])
@@ -265,7 +266,7 @@ if tokenizer.pad_token == None:
         tokenizer.pad_token = tokenizer.eos_token
 
 # Load datasets
-train_dataset, eval_dataset = load_train_eval_dataset(script_args.dataset, tokenizer, mode=script_args.dataset_mode, model_name='GRM', size=100 if script_args.debug else None)
+train_dataset, eval_dataset = load_train_eval_dataset(script_args.dataset, tokenizer, mode=script_args.dataset_mode, model_name='GRM', dataset_step_size=script_args.dataset_step_size, size=100 if script_args.debug else None)
 print('Training dataset size: {}, validation dataset size: {}'.format(len(train_dataset), len(eval_dataset)))
 
 
