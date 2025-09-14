@@ -15,17 +15,16 @@
 # ============================================
 # CONFIGURATION VARIABLES (edit these!)
 # ============================================
-MODEL_TYPE="BT" # or "BT" for Bradley-Terry
-TRAINING_TYPE="LoRA" # or "Full" for full fine-tuning TODO: IMPLEMENT
-DATASET="Skywork/Skywork-Reward-Preference-80K-v0.2"
-DATASET_NAME="skywork80k"
 BASE_MODEL_PATH="Qwen/Qwen2.5-3B-Instruct"
+DATASET="llm-blender/Unified-Feedback"
+DATASET_SHORT_NAME="Unified"
+DATASET_SIZE='40K' # 400K
 SEED=1
 # ============================================
 
 
 BASE_MODEL_NAME="${BASE_MODEL_PATH##*/}"  # Automatically extract model name after last slash
-FULL_RUN_NAME="${MODEL_TYPE}_${TRAINING_TYPE}_${DATASET_NAME}_on_${BASE_MODEL_NAME}_seed${SEED}"
+FULL_RUN_NAME="$BT_LoRA_${DATASET_SHORT_NAME}_${DATASET_SIZE}_on_${BASE_MODEL_NAME}_seed${SEED}"
 
 # Load your environment
 module purge
@@ -50,28 +49,14 @@ echo "Model: ${BASE_MODEL_PATH}"
 echo "Seed: ${SEED}"
 echo "------------------------------------------------"
 
-# Determine script name and prefix based on training type
-if [ "${MODEL_TYPE}" = "GRM" ]; then
-    SCRIPT_NAME="run_grm_reward_train.py"
-else
-    SCRIPT_NAME="run_reward_models_train.py"
-fi
-
 # Navigate to the directory with your script (if needed)
 # BMRC
 cd /well/summerfield/projects/base_model_values/Ray233_RM_training/reward_models
-# NOOPER
-# cd /mnt/quick/brian/base_model_values/reward_model_training/Ray2333_GRM-gemma2-2B-rewardmodel-ft/Generalizable-Reward-Model/reward_models
 
-# For automatically pushing to HuggingFace Hub (optional)
-# --push_to_hub True \
-# --hub_model_id "brianchristian/${FULL_RUN_NAME}" \
-# --hub_private_repo True \
-# --hub_strategy end \
-
-python ${SCRIPT_NAME} \
+python run_reward_models_train.py \
   --base_model "${BASE_MODEL_PATH}" \
   --dataset "${DATASET}" \
+  --dataset_mode "${DATASET_SIZE}" \
   --per_device_train_batch_size 4 \
   --gradient_accumulation_steps 4 \
   --learning_rate 1e-5 \
