@@ -1,13 +1,13 @@
 #!/bin/bash
 
+#SBATCH -J bt_lora_unified_on_qwen_2.5_3b_instruct
 #SBATCH -D /well/summerfield/projects/base_model_values
-#SBATCH -J bt_lora_skywork_on_qwen_2.5_3b_instruct
 #SBATCH -A summerfield.prj
-#SBATCH -p gpu_long
+#SBATCH -p gpu_short
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=48G
-#SBATCH -t 60:00:00
+#SBATCH -t 4:00:00
 #SBATCH -o logs/%x-%j.out
 #SBATCH -e logs/%x-%j.err
 #SBATCH --constraint=a100
@@ -18,13 +18,13 @@
 BASE_MODEL_PATH="Qwen/Qwen2.5-3B-Instruct"
 DATASET="llm-blender/Unified-Feedback"
 DATASET_SHORT_NAME="Unified"
-DATASET_SIZE='40K' # 400K
+DATASET_STEP_SIZE=64
 SEED=1
 # ============================================
 
 
 BASE_MODEL_NAME="${BASE_MODEL_PATH##*/}"  # Automatically extract model name after last slash
-FULL_RUN_NAME="$BT_LoRA_${DATASET_SHORT_NAME}_${DATASET_SIZE}_on_${BASE_MODEL_NAME}_seed${SEED}"
+FULL_RUN_NAME="$BT_LoRA_${DATASET_SHORT_NAME}_stepsize_${DATASET_STEP_SIZE}_on_${BASE_MODEL_NAME}_seed${SEED}"
 
 # Load your environment
 module purge
@@ -33,7 +33,7 @@ conda activate Ray2333_GRM
 
 # Set up Weights & Biases
 export WANDB_ENTITY="base-model-values"
-export WANDB_PROJECT="Ray2333_Gemma2-2B_repro"
+export WANDB_PROJECT="BT_LoRA_unified"
 export HUGGINGFACE_HUB_TOKEN=${HF_TOKEN}
 
 # Create logs directory if needed
@@ -56,7 +56,7 @@ cd /well/summerfield/projects/base_model_values/Ray233_RM_training/reward_models
 python run_reward_models_train.py \
   --base_model "${BASE_MODEL_PATH}" \
   --dataset "${DATASET}" \
-  --dataset_mode "${DATASET_SIZE}" \
+  --dataset_step_size "${DATASET_STEP_SIZE}" \
   --per_device_train_batch_size 4 \
   --gradient_accumulation_steps 4 \
   --learning_rate 1e-5 \
