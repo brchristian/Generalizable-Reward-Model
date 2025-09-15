@@ -223,7 +223,7 @@ def main(model_name):
 
             # Minimal README
             (tmp / "README.md").write_text(
-                f"# GRM Gemma2 2B — checkpoint {step}\n\n"
+                f"# {model_name} — checkpoint {step}\n\n"
                 f"This revision contains the files from `{ckpt_path.name}`.\n\n"
                 f"Load via:\n\n"
                 f"```python\n"
