@@ -24,7 +24,7 @@ SEED=1
 
 
 BASE_MODEL_NAME="${BASE_MODEL_PATH##*/}"  # Automatically extract model name after last slash
-FULL_RUN_NAME="$BT_LoRA_${DATASET_SHORT_NAME}_stepsize_${DATASET_STEP_SIZE}_on_${BASE_MODEL_NAME}_seed${SEED}"
+FULL_RUN_NAME="BT_LoRA_${DATASET_SHORT_NAME}_stepsize_${DATASET_STEP_SIZE}_on_${BASE_MODEL_NAME}_seed${SEED}"
 
 # Load your environment
 module purge
