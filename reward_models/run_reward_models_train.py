@@ -124,8 +124,8 @@ training_args = TrainingArguments(
     max_steps=script_args.max_steps,
     evaluation_strategy=script_args.evaluation_strategy,
     eval_steps=script_args.eval_steps,
-    save_strategy=script_args.save_strategy,
-    save_steps=script_args.save_steps,
+    save_strategy="steps" if script_args.save_strategy == "log_schedule" else script_args.save_strategy,
+    save_steps=1 if script_args.save_strategy == "log_schedule" else script_args.save_steps,
     gradient_accumulation_steps=script_args.gradient_accumulation_steps,
     gradient_checkpointing=script_args.gradient_checkpointing, 
     bf16=script_args.bf16,
@@ -151,11 +151,6 @@ training_args = TrainingArguments(
     hub_strategy=script_args.hub_strategy,
     seed=script_args.seed,
 )
-
-if script_args.save_strategy == "log_schedule":
-    training_args.save_strategy = "steps"
-    training_args.save_steps = 1
-
 
 # Load the tokenizer.
 tokenizer = AutoTokenizer.from_pretrained(script_args.base_model, use_fast = False)
@@ -233,7 +228,7 @@ if script_args.save_strategy == "log_schedule":
 
 # Before we begin, let's take a checkpoint at "step 0"
 if (script_args.save_strategy == "log_schedule") or (training_args.save_strategy == "steps" and training_args.save_steps > 0):
-    init_dir = Path(training_args.output_dir) / "init"
+    init_dir = Path(training_args.output_dir) / "checkpoint-0"
     init_dir.mkdir(parents=True, exist_ok=True)
     print("Saving initial checkpoint at step 0")
     trainer.model.save_pretrained(init_dir)
