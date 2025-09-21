@@ -27,6 +27,9 @@ except ImportError:
     from requests import HTTPError as HfHubHTTPError
 import glob, shutil, tempfile
 
+# For exporting checkpoint '0'
+from pathlib import Path
+
 class PromoteAndTagCallback(TrainerCallback):
     """
     On each Trainer save:
@@ -353,8 +356,11 @@ if script_args.push_to_hub and script_args.hub_model_id:
 
 # Before we begin, let's take a checkpoint at "step 0"
 if training_args.save_strategy == "steps" and training_args.save_steps > 0:
+    ckpt0 = Path(training_args.output_dir) / "checkpoint-0"
+    ckpt0.mkdir(parents=True, exist_ok=True)
+
     print("Saving initial checkpoint at step 0")
-    trainer.save_model(f"{training_args.output_dir}/checkpoint-0")
+    trainer.save_model(str(ckpt0))
 
 print('training start')
 trainer.train()

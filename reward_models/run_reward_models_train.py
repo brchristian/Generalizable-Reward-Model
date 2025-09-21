@@ -17,6 +17,8 @@ from reward_trainer import SimpleRewardTrainer, RewardDataCollatorWithPadding
 from load_datasets import load_train_eval_dataset
 from utils import print_trainable_parameters, compute_metrics, freeze_trainable_parameters
 
+# For exporting checkpoint '0'
+from pathlib import Path
 
 @dataclass
 class ScriptArguments:
@@ -200,8 +202,11 @@ print_trainable_parameters(trainer.model)
 
 # Before we begin, let's take a checkpoint at "step 0"
 if training_args.save_strategy == "steps" and training_args.save_steps > 0:
+    ckpt0 = Path(training_args.output_dir) / "checkpoint-0"
+    ckpt0.mkdir(parents=True, exist_ok=True)
+
     print("Saving initial checkpoint at step 0")
-    trainer.save_model(f"{training_args.output_dir}/checkpoint-0")
+    trainer.save_model(str(ckpt0))
 
 print('training start')
 trainer.train()
