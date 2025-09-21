@@ -12,6 +12,7 @@ from transformers import (
     AutoTokenizer,
     HfArgumentParser,
     TrainingArguments,
+    TrainerCallback
 )
 from reward_trainer import SimpleRewardTrainer, RewardDataCollatorWithPadding
 from load_datasets import load_train_eval_dataset
@@ -19,6 +20,29 @@ from utils import print_trainable_parameters, compute_metrics, freeze_trainable_
 
 # For exporting checkpoint '0'
 from pathlib import Path
+
+# For log-schedule checkpoints
+class LogScheduledCheckpoint(TrainerCallback):
+    def __init__(self, max_steps_hint: Optional[int] = None):
+        super().__init__()
+        self._max_steps_hint = max_steps_hint if (max_steps_hint and max_steps_hint > 0) else None
+        self.steps = set()
+
+    def _build_schedule(self, max_steps: int):
+        # powers of two: 1,2,4,... plus the final step if not already included
+        s = 1
+        while s <= max_steps:
+            self.steps.add(s)
+            s <<= 1
+        self.steps.add(max_steps)  # ensure the last step is saved
+
+    def on_train_begin(self, args, state, control, **kwargs) -> None:  # type: ignore[override]
+        # Prefer the trainer's computed max_steps; fall back to provided hint; else a sane cap.
+        ms = state.max_steps or self._max_steps_hint or 100_000
+        self._build_schedule(ms)
+
+    def on_step_end(self, args, state, control, **kwargs) -> None:  # type: ignore[override]
+        control.should_save = state.global_step in self.steps
 
 @dataclass
 class ScriptArguments:
@@ -128,6 +152,11 @@ training_args = TrainingArguments(
     seed=script_args.seed,
 )
 
+if script_args.save_strategy == "log_schedule":
+    training_args.save_strategy = "steps"
+    training_args.save_steps = 1
+
+
 # Load the tokenizer.
 tokenizer = AutoTokenizer.from_pretrained(script_args.base_model, use_fast = False)
 tokenizer.max_length = script_args.max_length
@@ -186,7 +215,6 @@ trainer_params = {
     'weight_ratio': script_args.weight_ratio,
 }
 
-
 if script_args.use_lora:
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS,
@@ -200,13 +228,21 @@ if script_args.use_lora:
 trainer = SimpleRewardTrainer(**trainer_params)
 print_trainable_parameters(trainer.model)
 
-# Before we begin, let's take a checkpoint at "step 0"
-if training_args.save_strategy == "steps" and training_args.save_steps > 0:
-    ckpt0 = Path(training_args.output_dir) / "checkpoint-0"
-    ckpt0.mkdir(parents=True, exist_ok=True)
+if script_args.save_strategy == "log_schedule":
+    trainer.add_callback(LogScheduledCheckpoint(training_args.max_steps))
 
+# Before we begin, let's take a checkpoint at "step 0"
+if (script_args.save_strategy == "log_schedule") or (training_args.save_strategy == "steps" and training_args.save_steps > 0):
+    init_dir = Path(training_args.output_dir) / "init"
+    init_dir.mkdir(parents=True, exist_ok=True)
     print("Saving initial checkpoint at step 0")
-    trainer.save_model(str(ckpt0))
+    trainer.model.save_pretrained(init_dir)
+    trainer.tokenizer.save_pretrained(init_dir)
+    try:
+        trainer.state.global_step = 0
+        (init_dir / "trainer_state.json").write_text(trainer.state.to_json_string())
+    except Exception:
+        pass
 
 print('training start')
 trainer.train()
