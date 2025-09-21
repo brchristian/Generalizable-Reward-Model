@@ -22,27 +22,38 @@ from utils import print_trainable_parameters, compute_metrics, freeze_trainable_
 from pathlib import Path
 
 # For log-schedule checkpoints
-class LogScheduledCheckpoint(TrainerCallback):
-    def __init__(self, max_steps_hint: Optional[int] = None):
-        super().__init__()
-        self._max_steps_hint = max_steps_hint if (max_steps_hint and max_steps_hint > 0) else None
-        self.steps = set()
+def powers_of_two_upto(n: int) -> set[int]:
+    steps, s = set(), 1
+    while s <= n:
+        steps.add(s)
+        s <<= 1
+    steps.add(n)  # ensure final step
+    return steps
 
-    def _build_schedule(self, max_steps: int):
-        # powers of two: 1,2,4,... plus the final step if not already included
-        s = 1
-        while s <= max_steps:
-            self.steps.add(s)
-            s <<= 1
-        self.steps.add(max_steps)  # ensure the last step is saved
+def fixed_every_k(k: int, n: int) -> set[int]:
+    if not k or k <= 0:
+        return set()
+    return set(range(k, n + 1, k))
+
+class OverlayScheduleCallback(TrainerCallback):
+    def __init__(self, save_k: int | None, eval_k: int | None, log_k: int | None, max_steps_hint: int | None = None):
+        super().__init__()
+        self.save_k, self.eval_k, self.log_k = save_k, eval_k, log_k
+        self.max_steps_hint = max_steps_hint if (max_steps_hint and max_steps_hint > 0) else None
+        self.save_set = set(); self.eval_set = set(); self.log_set = set()
 
     def on_train_begin(self, args, state, control, **kwargs) -> None:  # type: ignore[override]
-        # Prefer the trainer's computed max_steps; fall back to provided hint; else a sane cap.
-        ms = state.max_steps or self._max_steps_hint or 100_000
-        self._build_schedule(ms)
+        ms = state.max_steps or self.max_steps_hint or 100_000
+        log = powers_of_two_upto(ms)
+        self.save_set = fixed_every_k(self.save_k or 0, ms) | log
+        self.eval_set = fixed_every_k(self.eval_k or 0, ms) | log
+        self.log_set  = fixed_every_k(self.log_k  or 0, ms) | log
 
     def on_step_end(self, args, state, control, **kwargs) -> None:  # type: ignore[override]
-        control.should_save = state.global_step in self.steps
+        step = state.global_step
+        control.should_save     = step in self.save_set
+        control.should_evaluate = step in self.eval_set
+        control.should_log      = step in self.log_set
 
 @dataclass
 class ScriptArguments:
@@ -92,6 +103,7 @@ class ScriptArguments:
     metric_for_best_model: Optional[str] = field(default="eval_loss")
     greater_is_better: Optional[bool] = field(default=False)
     save_safetensors: Optional[bool] = field(default=True)
+    use_log_overlay: Optional[bool] = field(default=False, metadata={"help": "Overlay log-scale steps on top of fixed save/eval/log cadences"})
     # Hub arguments
     push_to_hub: Optional[bool] = field(default=False)
     hub_model_id: Optional[str] = field(default=None)
@@ -122,15 +134,15 @@ training_args = TrainingArguments(
     per_device_eval_batch_size=script_args.per_device_eval_batch_size,
     num_train_epochs=script_args.num_train_epochs,
     max_steps=script_args.max_steps,
-    evaluation_strategy=script_args.evaluation_strategy,
-    eval_steps=script_args.eval_steps,
-    save_strategy="steps" if script_args.save_strategy == "log_schedule" else script_args.save_strategy,
-    save_steps=1 if script_args.save_strategy == "log_schedule" else script_args.save_steps,
+    evaluation_strategy="steps" if script_args.use_log_overlay else script_args.evaluation_strategy,
+    eval_steps=1 if script_args.use_log_overlay else script_args.eval_steps,
+    save_strategy="steps" if script_args.use_log_overlay else script_args.save_strategy,
+    save_steps=1 if script_args.use_log_overlay else script_args.save_steps,
     gradient_accumulation_steps=script_args.gradient_accumulation_steps,
     gradient_checkpointing=script_args.gradient_checkpointing, 
     bf16=script_args.bf16,
     logging_strategy="steps",
-    logging_steps=script_args.logging_steps,
+    logging_steps=1 if script_args.use_log_overlay else script_args.logging_steps,
     save_total_limit=script_args.save_total_limit,
     warmup_ratio=0.03,
     optim=script_args.optim,
@@ -223,8 +235,15 @@ if script_args.use_lora:
 trainer = SimpleRewardTrainer(**trainer_params)
 print_trainable_parameters(trainer.model)
 
-if script_args.save_strategy == "log_schedule":
-    trainer.add_callback(LogScheduledCheckpoint(training_args.max_steps))
+if script_args.use_log_overlay:
+    trainer.add_callback(
+        OverlayScheduleCallback(
+            save_k=script_args.save_steps,
+            eval_k=script_args.eval_steps,
+            log_k=script_args.logging_steps,
+            max_steps_hint=training_args.max_steps
+        )
+    )
 
 # Before we begin, let's take a checkpoint at "step 0"
 if (script_args.save_strategy == "log_schedule") or (training_args.save_strategy == "steps" and training_args.save_steps > 0):
