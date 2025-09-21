@@ -350,5 +350,11 @@ if script_args.push_to_hub and script_args.hub_model_id:
             hf_token=os.getenv("HUGGINGFACE_HUB_TOKEN") or os.getenv("HF_TOKEN")
         )
     )
+
+# Before we begin, let's take a checkpoint at "step 0"
+if training_args.save_strategy == "steps" and training_args.save_steps > 0:
+    print("Saving initial checkpoint at step 0")
+    trainer.save_model(f"{training_args.output_dir}/checkpoint-0")
+
 print('training start')
 trainer.train()
