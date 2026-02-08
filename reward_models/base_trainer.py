@@ -24,7 +24,7 @@ from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_pt_utils import nested_detach
 from transformers.trainer_utils import EvalPrediction
 
-from trl.import_utils import is_peft_available
+from transformers.utils import is_peft_available
 from trl.trainer.reward_config import RewardConfig
 from trl.trainer.utils import RewardDataCollatorWithPadding, compute_accuracy
 

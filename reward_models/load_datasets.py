@@ -52,7 +52,7 @@ def build_dataset(data_path, tokenizer, split='train', size=None, model_name='')
 
 
 # for UnifiedFeedback
-def build_dataset_UF(data_path, tokenizer, split='train', size=None, mode='', model_name=''):
+def build_dataset_UF(data_path, tokenizer, split='train', size=None, mode='', model_name='', dataset_step_size=None):
     try:
         ds = load_dataset(data_path, 'all', split=split)
     except:
@@ -61,11 +61,24 @@ def build_dataset_UF(data_path, tokenizer, split='train', size=None, mode='', mo
     # filter data with the same rating
     ds = ds.filter(lambda example: example['conv_A_rating'] != example['conv_B_rating'], num_proc=30)
 
-    if len(mode):
+    original_size = len(ds)
+
+    # Handle dataset_step_size parameter
+    if dataset_step_size is not None:
+        ds = ds.select(range(0, len(ds), dataset_step_size))
+        print(f"Dataset subsampled with step_size={dataset_step_size}: {original_size} -> {len(ds)}")
+    elif len(mode):
+        # Original mode behavior for backward compatibility
         if mode == '40k' or mode == '40K':
-            ds = ds.select(range(0, len(ds), 20)) 
+            ds = ds.select(range(0, len(ds), 20))
+            print(f"Dataset subsampled (40k mode): {original_size} -> {len(ds)} (step=20)")
         elif mode == '400k' or mode == '400K':
-            ds = ds.select(range(0, len(ds), 2)) 
+            ds = ds.select(range(0, len(ds), 2))
+            print(f"Dataset subsampled (400k mode): {original_size} -> {len(ds)} (step=2)")
+        else:
+            print(f"Dataset size: {original_size} (no subsampling, unrecognized mode: {mode})")
+    else:
+        print(f"Dataset size: {original_size} (no subsampling)")
 
     if size is not None:
         ds = ds.select(range(0, size))
@@ -166,10 +179,10 @@ def build_dataset_SK(data_path, tokenizer, split='train', size=None, model_name=
     return ds
 
 
-def load_train_eval_dataset(data_path, tokenizer, size=None, mode='', model_name=''):
+def load_train_eval_dataset(data_path, tokenizer, size=None, mode='', model_name='', dataset_step_size=None):
     if 'Unified' in data_path:
-        # mode is only used for loading training data
-        train_dataset = build_dataset_UF(data_path, tokenizer, split='train', size=size, mode=mode, model_name=model_name) 
+        # mode and dataset_step_size are only used for loading training data
+        train_dataset = build_dataset_UF(data_path, tokenizer, split='train', size=size, mode=mode, model_name=model_name, dataset_step_size=dataset_step_size)
         eval_dataset = build_dataset_UF(data_path, tokenizer, split='val', model_name=model_name)
     elif 'Skywork' in data_path:
         dataset = build_dataset_SK(data_path, tokenizer, split='train', size=size, model_name=model_name)

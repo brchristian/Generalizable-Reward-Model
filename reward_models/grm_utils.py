@@ -234,7 +234,11 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
 
     if 'Mistral' not in model_name:
         model_config['attn_implementation'] = "flash_attention_2"
-        
+    if 'Gemma2' in model_name:
+        model_config['attn_implementation'] = "eager"
+    if 'Qwen' in model_name:
+        model_config['attn_implementation'] = "sdpa"
+
     model = AutoModelForCausalLMWithValueHead.from_pretrained(model_name, **model_config)
     model.pretrained_model.resize_token_embeddings(len(tokenizer))
     model.config.pad_token_id = tokenizer.pad_token_id
@@ -256,6 +260,13 @@ def load_model_withhead(model_name, peft_name, tokenizer, device, \
         missing, unexpected = model.base_model.model.pretrained_model.load_state_dict(loaded_state_dict, strict=False)
         missing, unexpected = model.base_model.model.load_state_dict(loaded_state_dict, strict=False)
     
+        # Load value head if it exists
+        v_head_path = os.path.join(peft_name, "v_head.pt")
+        if os.path.exists(v_head_path):
+            v_head_state_dict = torch.load(v_head_path, map_location=device)
+            model.v_head.load_state_dict(v_head_state_dict)
+            print(f"Loaded value head from {v_head_path}")
+
     if hasattr(model, 'merge_and_unload'):
         model = model.merge_and_unload()
     return model

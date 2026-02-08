@@ -12,11 +12,48 @@ from transformers import (
     AutoTokenizer,
     HfArgumentParser,
     TrainingArguments,
+    TrainerCallback
 )
 from reward_trainer import SimpleRewardTrainer, RewardDataCollatorWithPadding
 from load_datasets import load_train_eval_dataset
 from utils import print_trainable_parameters, compute_metrics, freeze_trainable_parameters
 
+# For exporting checkpoint '0'
+from pathlib import Path
+
+# For log-schedule checkpoints
+def powers_of_two_upto(n: int) -> set[int]:
+    steps, s = set(), 1
+    while s <= n:
+        steps.add(s)
+        s <<= 1
+    steps.add(n)  # ensure final step
+    return steps
+
+def fixed_every_k(k: int, n: int) -> set[int]:
+    if not k or k <= 0:
+        return set()
+    return set(range(k, n + 1, k))
+
+class OverlayScheduleCallback(TrainerCallback):
+    def __init__(self, save_k: int | None, eval_k: int | None, log_k: int | None, max_steps_hint: int | None = None):
+        super().__init__()
+        self.save_k, self.eval_k, self.log_k = save_k, eval_k, log_k
+        self.max_steps_hint = max_steps_hint if (max_steps_hint and max_steps_hint > 0) else None
+        self.save_set = set(); self.eval_set = set(); self.log_set = set()
+
+    def on_train_begin(self, args, state, control, **kwargs) -> None:  # type: ignore[override]
+        ms = state.max_steps or self.max_steps_hint or 100_000
+        log = powers_of_two_upto(ms)
+        self.save_set = fixed_every_k(self.save_k or 0, ms) | log
+        self.eval_set = fixed_every_k(self.eval_k or 0, ms) | log
+        self.log_set  = fixed_every_k(self.log_k  or 0, ms) | log
+
+    def on_step_end(self, args, state, control, **kwargs) -> None:  # type: ignore[override]
+        step = state.global_step
+        control.should_save     = step in self.save_set
+        control.should_evaluate = step in self.eval_set
+        control.should_log      = step in self.log_set
 
 @dataclass
 class ScriptArguments:
@@ -25,15 +62,17 @@ class ScriptArguments:
     gradient_accumulation_steps: Optional[int] = field(default=16)
     learning_rate: Optional[float] = field(default=1e-5)
     num_train_epochs: Optional[int] = field(default=2, metadata={"help": "The number of training epochs for the reward model."})
+    max_steps: Optional[int] = field(default=-1, metadata={"help": "Total number of optimizer steps to train for. Overrides num_train_epochs."})
     optim: Optional[str] = field(default="adamw_hf",  metadata={"help": "The optimizer to use."})
     lr_scheduler_type: Optional[str] = field(default="cosine", metadata={"help": "The lr scheduler"},)
     max_length: Optional[int] = field(default=1024) 
     gradient_checkpointing: Optional[bool] = field(default=True)
     bf16: Optional[bool] = field(default=True)
-    attn_implementation: Optional[str] = field(default="flash_attention_2")
+    attn_implementation: Optional[str] = field(default="sdpa")
     # data
     dataset: Optional[str] = field(default='llm-blender/Unified-Feedback')
     dataset_mode: Optional[str] = field(default='', metadata={"help": "use from '', '40k', and '400k' for the paper's experiments"},)
+    dataset_step_size: Optional[int] = field(default=None, metadata={"help": "Step size for dataset subsampling (e.g., 2 for every 2nd sample, 20 for every 20th sample)"},)
     # lora
     use_lora: Optional[bool] = field(default=True)
     lora_target_modules: Optional[List[str]] = field(default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"])
@@ -56,6 +95,22 @@ class ScriptArguments:
     save_strategy: Optional[str] = field(default="epoch")
     save_steps: Optional[int] = field(default=1000)
     debug: Optional[bool] = field(default=False, metadata={'help': 'if debug=True, only train with 100 samples'})
+    # Checkpointing
+    output_dir: Optional[str] = field(default=None, metadata={"help": "Overrides default output path"})
+    save_total_limit: Optional[int] = field(default=12)
+    logging_steps: Optional[int] = field(default=100)
+    load_best_model_at_end: Optional[bool] = field(default=True)
+    metric_for_best_model: Optional[str] = field(default="eval_loss")
+    greater_is_better: Optional[bool] = field(default=False)
+    save_safetensors: Optional[bool] = field(default=True)
+    use_log_overlay: Optional[bool] = field(default=False, metadata={"help": "Overlay log-scale steps on top of fixed save/eval/log cadences"})
+    # Hub arguments
+    push_to_hub: Optional[bool] = field(default=False)
+    hub_model_id: Optional[str] = field(default=None)
+    hub_private_repo: Optional[bool] = field(default=False)
+    hub_strategy: Optional[str] = field(default="every_save")
+    # Training seed
+    seed: Optional[int] = field(default=42)
     
 
 
@@ -69,21 +124,26 @@ else:
 
 device = Accelerator().local_process_index 
 
+# pick a tidy default if user didn't pass --output_dir
+final_output_dir = script_args.output_dir or os.path.join(output_name, 'checkpoints')
+
 training_args = TrainingArguments(
-    output_dir=os.path.join(output_name, 'logs'),
+    output_dir=final_output_dir,
     learning_rate=script_args.learning_rate,
     per_device_train_batch_size=script_args.per_device_train_batch_size,
     per_device_eval_batch_size=script_args.per_device_eval_batch_size,
     num_train_epochs=script_args.num_train_epochs,
-    evaluation_strategy=script_args.evaluation_strategy,
-    eval_steps=script_args.eval_steps,
-    save_strategy=script_args.save_strategy,
-    save_steps=script_args.save_steps,
+    max_steps=script_args.max_steps,
+    evaluation_strategy="steps" if script_args.use_log_overlay else script_args.evaluation_strategy,
+    eval_steps=1 if script_args.use_log_overlay else script_args.eval_steps,
+    save_strategy="steps" if script_args.use_log_overlay else script_args.save_strategy,
+    save_steps=1 if script_args.use_log_overlay else script_args.save_steps,
     gradient_accumulation_steps=script_args.gradient_accumulation_steps,
     gradient_checkpointing=script_args.gradient_checkpointing, 
     bf16=script_args.bf16,
     logging_strategy="steps",
-    logging_steps=10,
+    logging_steps=1 if script_args.use_log_overlay else script_args.logging_steps,
+    save_total_limit=script_args.save_total_limit,
     warmup_ratio=0.03,
     optim=script_args.optim,
     lr_scheduler_type=script_args.lr_scheduler_type,
@@ -93,6 +153,15 @@ training_args = TrainingArguments(
     remove_unused_columns=False,
     gradient_checkpointing_kwargs={"use_reentrant": False},
     ddp_find_unused_parameters=False,
+    load_best_model_at_end=script_args.load_best_model_at_end,
+    metric_for_best_model=script_args.metric_for_best_model,
+    greater_is_better=script_args.greater_is_better,
+    save_safetensors=script_args.save_safetensors,
+    push_to_hub=script_args.push_to_hub,
+    hub_model_id=script_args.hub_model_id,
+    hub_private_repo=script_args.hub_private_repo,
+    hub_strategy=script_args.hub_strategy,
+    seed=script_args.seed,
 )
 
 # Load the tokenizer.
@@ -105,7 +174,7 @@ if tokenizer.pad_token == None:
         tokenizer.pad_token = tokenizer.eos_token
 
 # Load datasets
-train_dataset, eval_dataset = load_train_eval_dataset(script_args.dataset, tokenizer, mode=script_args.dataset_mode, size=100 if script_args.debug else None)
+train_dataset, eval_dataset = load_train_eval_dataset(script_args.dataset, tokenizer, mode=script_args.dataset_mode, dataset_step_size=script_args.dataset_step_size, size=100 if script_args.debug else None)
 print('Training dataset size: {}, validation dataset size: {}'.format(len(train_dataset), len(eval_dataset)))
 
 
@@ -136,6 +205,8 @@ if script_args.freeze_pretrained:
 
 model.resize_token_embeddings(len(tokenizer))
 model.config.pad_token_id = tokenizer.pad_token_id
+# Ensure num_labels is set correctly in config for saving/loading
+model.config.num_labels = 1
 print_trainable_parameters(model)
 
 # Define the trainer parameters
@@ -151,7 +222,6 @@ trainer_params = {
     'weight_ratio': script_args.weight_ratio,
 }
 
-
 if script_args.use_lora:
     peft_config = LoraConfig(
         task_type=TaskType.SEQ_CLS,
@@ -165,6 +235,28 @@ if script_args.use_lora:
 trainer = SimpleRewardTrainer(**trainer_params)
 print_trainable_parameters(trainer.model)
 
+if script_args.use_log_overlay:
+    trainer.add_callback(
+        OverlayScheduleCallback(
+            save_k=script_args.save_steps,
+            eval_k=script_args.eval_steps,
+            log_k=script_args.logging_steps,
+            max_steps_hint=training_args.max_steps
+        )
+    )
+
+# Before we begin, let's take a checkpoint at "step 0"
+if script_args.use_log_overlay or (training_args.save_strategy == "steps" and training_args.save_steps > 0):
+    init_dir = Path(training_args.output_dir) / "checkpoint-0"
+    init_dir.mkdir(parents=True, exist_ok=True)
+    print("Saving initial checkpoint at step 0")
+    trainer.model.save_pretrained(init_dir)
+    trainer.tokenizer.save_pretrained(init_dir)
+    try:
+        trainer.state.global_step = 0
+        (init_dir / "trainer_state.json").write_text(trainer.state.to_json_string())
+    except Exception:
+        pass
 
 print('training start')
 trainer.train()
